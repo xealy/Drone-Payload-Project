@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/index.css?nocache={timestamp}" type="text/css">
+<!--<link rel="stylesheet" href="/static/css/index.css">-->
+{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<section>
+    <div class="container border border-dark">
+        <div class="row">
+            <div class="col-2 bg-light text-center overflow-auto border border-dark" style="max-height: 600px;">
+                <p class="text-monospace pt-2">Image Stream</p>
+                {% for i in range(10) %}
+                    <div class="card">
+                        <img class="card-img-top" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap">
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="col-10">
+                <div class="row">
+                    <div class="col bg-light text-center border border-dark">
+                        <p class="text-monospace pt-2">Current Image</p>
+                        <div class="card p-1">
+                          <img class="card-img-top" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap">
+                        </div>
+                    </div>
+                    <div class="col bg-light text-center border border-dark">
+                        <p class="text-monospace pt-2">Current Stats</p>
+                        <canvas id="myChart"></canvas>
+                        <script>
+                            var data = {{ chartJSON | safe }}
+                            var ctx = document.getElementById("myChart").getContext('2d');
+                            var myChart = new Chart(ctx, data);
+                        </script>
+                    </div>
+                </div>
+                <div class="row border border-dark">
+                    <div class="col bg-light text-center ">
+                        <p class="text-monospace pt-2">Average Stats</p>
+
+                        <table class="table">
+                          <thead class="thead-dark">
+                            <tr>
+                              <th scope="col">Targets</th>
+                              <th scope="col">Average Readings</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <th scope="row">Ball Valve</th>
+                              <td>-</td>
+                            </tr>
+                            <tr>
+                              <th scope="row">Air Pressure Gauge</th>
+                              <td>-</td>
+                            </tr>
+                            <tr>
+                              <th scope="row">ArUCO Marker</th>
+                              <td>-</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

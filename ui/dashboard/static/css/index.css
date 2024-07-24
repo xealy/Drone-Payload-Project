@@ -1,0 +1,109 @@
+.CoralBanner {
+  background-image: url("/static/images/banner.jpg");
+  /*background-image: none !important;*/
+  background-size: 100% 100%;
+  height: 330px;
+  border-radius: 8px;
+  margin-bottom: 0;
+}
+
+.CoralBanner img{
+  width: 100%;
+  height: 330px;
+  border-radius: 8px;
+}
+
+.CoralBanner h1{
+  color: white; /* white */
+  text-align: center;
+  padding-top: 70px;
+  font-size: 60px;
+}
+
+.CoralBanner h3{
+  color: white;
+  text-align: center;
+}
+
+.CoralBanner a{
+  color: white;
+  text-align: center;
+}
+
+.CoralBanner .center{
+  padding-left: 43%;
+}
+
+.CoralBanner .btn {
+  background: rgb(255, 255, 255);
+  color: #1A778F;
+  border: none;
+}
+
+.CoralBanner .btn:hover {
+  background: #e1f4f8;
+  color: #1A778F;
+}
+
+.CategoryCard {
+  width: 265px;
+  height: 265px;
+  border-radius: 4px;
+  background: #CEE8EE;
+  display: block;
+}
+
+/*******************************************
+
+  Category Tag Component
+
+*******************************************/
+
+
+.CategoryTagWrapper {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  height: 150px;
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .CategoryTagWrapper {
+    height: 400px;
+  }
+}
+
+.CategoryTag {
+  display: flex;
+  flex-grow: 1;
+  padding: 6px;
+  text-decoration: none !important;
+}
+
+.CategoryTagInternal {
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  background: #fff;
+  border-radius: 4px;
+  height: 65px;
+  width: 175px;
+  box-shadow: 0px 1px 2px rgba(18, 31, 34, 0.1), 1px 1px 35px rgba(18, 31, 34, 0.03);
+}
+
+.CategoryTag span {
+  color: #374B50;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  width: 100%;
+}
+
+/* Category form */
+.catForm h6{
+  color: #374B50;
+  font-size: 11px;
+  font-weight: 600;
+}
