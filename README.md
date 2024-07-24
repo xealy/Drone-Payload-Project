@@ -11,6 +11,7 @@ To run the web app, I suggest you use a virtual environment to keep package inst
 * pip install pychart.js (run this too because i didn't include in requirements.txt)
 
 ### To run flask app:
+* first navigate to the directory that contains 'main.py'
 * export FLASK_APP=main.py (if you use Mac)
-* $env:FLASK_APP="main.py" (if you use Windows)
+* set FLASK_APP=main.py (if you use Windows -> you may also need to run $env:FLASK_APP="main.py")
 * flask run
