@@ -1,0 +1,33 @@
+import time 
+from smbus2 import SMBus 
+from bme280 import BME280 
+from ltr559 import LTR559 
+from envirplus import gas 
+from pms5003 import PMS5003 
+
+# temp & pressure collect 
+bus = SMBus(1) 
+bme280 = BME280(i2c_dev=bus)
+
+temperature = print(bme280.get_temperature())
+pressure = print(bme280.get_pressure(), bme280.get_humidity()) 
+
+# light sensor 
+ltr = LTR559()
+while True: 
+    print(ltr.get_lex(), ltr.get_proximity())
+    time.sleep(1) #prints light & proximity value every 1 sec 
+
+# gas sensor 
+while True: 
+    readings = gas.read_all() 
+    print(readings.reducing) # readings.'reducing' will just give reducing change '' to get parts needed 
+    print(readings.oxidising)
+    print(readings.nh3)
+    time.sleep(1.0)
+
+# particulate matter sensior 
+pms5003 = PMS5003() 
+readings_particulate = pms5003.read() 
+print(readings_particulate)
+
