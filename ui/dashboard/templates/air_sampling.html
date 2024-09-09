@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/index.css?nocache={timestamp}" type="text/css">
+<!--<link rel="stylesheet" href="/static/css/index.css">-->
+{% endblock %}
+
+{% block content %}
+
+<section>
+    <div class="container">
+        <div class="row">
+            <div class="col-2">
+                <p>Temperature</p>
+                <h1>{{ latest_data.temperature }}°C</h1>
+            </div>
+            <div class="col-2">
+                <p>Humidity</p>
+                <h1>{{ latest_data.humidity }}%</h1>
+            </div>
+            <div class="col-2">
+                <p>Air Pressure</p>
+                <h1>{{ latest_data.air_pressure }}</h1>
+            </div>
+            <div class="col-2">
+                <p>Lux</p>
+                <h1>{{ latest_data.lux }}</h1>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-11">
+                <div class="col bg-light">
+                    <p class="pt-2">Air Quality</p>
+                    <canvas id="myChart"></canvas>
+                    <script>
+                        var data = {{ chartJSON | safe }}
+                        var ctx = document.getElementById("myChart").getContext('2d');
+                        var myChart = new Chart(ctx, data);
+                    </script>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+{% endblock %}

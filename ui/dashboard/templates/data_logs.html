@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="/static/css/index.css?nocache={timestamp}" type="text/css">
+<!--<link rel="stylesheet" href="/static/css/index.css">-->
+{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+<section>
+    <div class="container">
+        <div class="row mt-2">
+            <div class="col-9">
+                <a class="btn btn-primary" href="/data_logs" role="button">Request Data Log</a>
+                <a class="btn btn-primary" href="/system_logs" role="button">View Systems Operations Log</a>
+
+                <p class="font-italic pt-2">Selected Desired Time Range:</p>
+
+                <form>
+                  <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <div class="input-group date" id="datetimepicker1" data-target-input="nearest">
+                            <label for="datetimepicker1" class="mr-2">From:  </label>
+                            <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker1"/>
+                            <div class="input-group-append" data-target="#datetimepicker1" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <div class="input-group date" id="datetimepicker2" data-target-input="nearest">
+                            <label for="datetimepicker2" class="mr-2">To:  </label>
+                            <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker2"/>
+                            <div class="input-group-append" data-target="#datetimepicker2" data-toggle="datetimepicker">
+                                <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary">Update</button>
+                </form>
+
+                <script type="text/javascript">
+                    $(function () {
+                        $('#datetimepicker1').datetimepicker({
+                            format: 'LT'
+                        });
+                    });
+                </script>
+
+                <script type="text/javascript">
+                    $(function () {
+                        $('#datetimepicker2').datetimepicker({
+                            format: 'LT'
+                        });
+                    });
+                </script>
+
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col bg-light text-center ">
+                <table class="table table-sm">
+                  <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Timestamp</th>
+                        <th scope="col">RED</th>
+                        <th scope="col">OX</th>
+                        <th scope="col">NH3</th>
+                        <th scope="col">Temp.</th>
+                        <th scope="col">Hum.</th>
+                        <th scope="col">Air Press.</th>
+                        <th scope="col">Lux</th>
+                        <th scope="col">Coords.</th>
+                        <th scope="col">Valve</th>
+                        <th scope="col">Gauge</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {% for row in data %}
+                    <tr>
+                        <th scope="row">{{ data[loop.index0].timestamp }}</th>
+                        <td>{{ data[loop.index0].reducing_gases }}</td>
+                        <td>{{ data[loop.index0].oxidising_gases }}</td>
+                        <td>{{ data[loop.index0].ammonia_gases }}</td>
+                        <td>{{ data[loop.index0].temperature }}</td>
+                        <td>{{ data[loop.index0].humidity }}</td>
+                        <td>{{ data[loop.index0].air_pressure }}</td>
+                        <td>{{ data[loop.index0].lux }}</td>
+                        <td>{{ data[loop.index0].coordinates }}</td>
+                        <td>{{ data[loop.index0].valve }}</td>
+                        <td>{{ data[loop.index0].gauge }}</td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

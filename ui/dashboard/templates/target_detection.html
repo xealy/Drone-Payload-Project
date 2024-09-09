@@ -11,54 +11,50 @@
 <section>
     <div class="container border border-dark">
         <div class="row">
-            <div class="col-2 bg-light text-center overflow-auto border border-dark" style="max-height: 600px;">
-                <p class="text-monospace pt-2">Image Stream</p>
+            <div class="col-3 bg-light text-center overflow-auto border-right border-dark" style="max-height: 600px;">
+                <p class="pt-2">Image Stream</p>
                 {% for i in range(10) %}
                     <div class="card">
                         <img class="card-img-top" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap">
                     </div>
                 {% endfor %}
             </div>
-            <div class="col-10">
+            <div class="col-9">
                 <div class="row">
-                    <div class="col bg-light text-center border border-dark">
-                        <p class="text-monospace pt-2">Current Image</p>
+                    <div class="col bg-light text-center">
+                        <p class="pt-2">Current Image</p>
                         <div class="card p-1">
-                          <img class="card-img-top" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap">
+                          <img style="height: 300px; max-width: 70%" class="card-img-top d-block m-auto" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap">
                         </div>
                     </div>
-                    <div class="col bg-light text-center border border-dark">
-                        <p class="text-monospace pt-2">Current Stats</p>
-                        <canvas id="myChart"></canvas>
-                        <script>
-                            var data = {{ chartJSON | safe }}
-                            var ctx = document.getElementById("myChart").getContext('2d');
-                            var myChart = new Chart(ctx, data);
-                        </script>
-                    </div>
                 </div>
-                <div class="row border border-dark">
+                <div class="row mt-3 pt-3 border-top border-dark">
                     <div class="col bg-light text-center ">
-                        <p class="text-monospace pt-2">Average Stats</p>
 
-                        <table class="table">
+                        <table class="table table-sm">
+
                           <thead class="thead-dark">
                             <tr>
                               <th scope="col">Targets</th>
-                              <th scope="col">Average Readings</th>
+                              <th scope="col">Last Detected</th>
+                              <th scope="col">Value</th>
                             </tr>
                           </thead>
+
                           <tbody>
                             <tr>
                               <th scope="row">Ball Valve</th>
+                              <td>-</td>
+                              <td>-</td>
+                            </tr>
+                            <tr>
+                              <th scope="row">ArUco Marker</th>
+                              <td>-</td>
                               <td>-</td>
                             </tr>
                             <tr>
                               <th scope="row">Air Pressure Gauge</th>
                               <td>-</td>
-                            </tr>
-                            <tr>
-                              <th scope="row">ArUCO Marker</th>
                               <td>-</td>
                             </tr>
                           </tbody>
