@@ -5,8 +5,7 @@ import pigpio
 
 
 GPIO.setmode(GPIO.BCM)
-# 
-liftpin = 18
+# pin on board 
 mosfetpin = 24
 
 GPIO.setup(mosfetpin, GPIO.OUT)
@@ -33,7 +32,7 @@ def ServoDrill(total_time, direction):
             elif direction == 'down':
                 if(GPIO.input(14) == GPIO.HIGH):
                     drill.angle = 90
-                    time.sleep(1.8)
+                    time.sleep(1.8) # will need to change depending on how far down it needs to go 
                     break
                 drill.angle = -90
             
