@@ -1,8 +1,10 @@
+import os
 from flask import Blueprint, send_from_directory, render_template, request, redirect
-from .models import DataModel, MeasurementChart
+from .models import DataModel, ImageModel, MeasurementChart
 from . import db
 from sqlalchemy import desc, asc
 from .forms import TimeRangeForm
+from datetime import datetime
 
 bp = Blueprint('main', __name__)
 
@@ -11,15 +13,25 @@ bp = Blueprint('main', __name__)
 def index():
     latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
     data = db.session.query(DataModel)
-    # data_selection = request.args.get('id')  # to get url query params
-    # print(data[0].timestamp)
 
     NewChart = MeasurementChart()
     NewChart.data.label = "Air Quality"
-    NewChart.set_labels(['2024-08-30 10:00:00', '2024-08-30 10:00:04', '2024-08-30 10:00:08', '2024-08-30 10:00:12', '2024-08-30 10:00:16', '2024-08-30 10:00:20', '2024-08-30 10:00:24'])
-    NewChart.set_data('Ammonia', [0.12, 0.11, 0.12, 0.13, 0.12, 0.14, 0.15])
-    NewChart.set_data('OX', [0.25, 0.24, 0.22, 0.21, 0.22, 0.23, 0.23])
-    NewChart.set_data('RED', [3.2, 3.3, 3.3, 3.4, 3.3, 3.4, 3.5])
+
+    labels_array = []
+    nh3_values_array = []
+    ox_values_array = []
+    red_values_array = []
+
+    for record in data:
+        labels_array.append(record.timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
+        red_values_array.append(record.reducing_gases)
+        ox_values_array.append(record.oxidising_gases)
+        nh3_values_array.append(record.ammonia_gases)
+
+    NewChart.set_labels(labels_array)
+    NewChart.set_data('Ammonia', nh3_values_array)
+    NewChart.set_data('OX', ox_values_array)
+    NewChart.set_data('RED', red_values_array)
     ChartJSON = NewChart.get()
 
     return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
@@ -28,9 +40,9 @@ def index():
 @bp.route('/target_detection', methods=['GET', 'POST'])
 def target_detection():
     data = db.session.query(DataModel)
-    # data_selection = request.args.get('id') # to get url query params
+    images = db.session.query(ImageModel)
 
-    return render_template('target_detection.html', data=data)
+    return render_template('target_detection.html', data=data, images=images)
 
 
 @bp.route('/data_logs', methods=['GET', 'POST'])
@@ -62,7 +74,6 @@ def data_logs():
 @bp.route('/system_logs', methods=['GET', 'POST'])
 def system_logs():
     data = db.session.query(DataModel)
-    # data_selection = request.args.get('id') # to get url query params
 
     # models = db.session.query(MLModel).order_by(asc(MLModel.category))
     # models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))

@@ -18,11 +18,17 @@ class DataModel(db.Model):
     gauge = db.Column(db.String, nullable=True)
 
 
+class ImageModel(db.Model):
+    __tablename__ = 'images'
+    id = db.Column(db.Integer, primary_key=True, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    image_path = db.Column(db.String, nullable=True)
+
+
 class MeasurementChart(BaseChart):
     type = ChartType.Line
 
     class labels:
-        # time = list(range(1, 8))
         time = ['2024-08-30 10:00:00', '2024-08-30 10:00:04', '2024-08-30 10:00:08', '2024-08-30 10:00:12', '2024-08-30 10:00:16', '2024-08-30 10:00:20', '2024-08-30 10:00:24']
 
     class data:
