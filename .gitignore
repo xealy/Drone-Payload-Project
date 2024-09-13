@@ -52,3 +52,4 @@ docs/_build/
 # Alex added these
 .idea/
 .DS_Store
+livefeed
