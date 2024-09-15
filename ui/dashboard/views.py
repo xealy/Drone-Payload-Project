@@ -6,7 +6,11 @@ from sqlalchemy import inspect, desc, asc
 from datetime import datetime
 # from .forms import TimeRangeForm
 
-# for camera
+# YOLO imports
+# from ultralytics import YOLO
+# import yolov5
+
+# Camera imports
 import cv2
 import depthai as dai
 import time
@@ -30,7 +34,12 @@ camRgb.video.link(xoutRgb.input)
 
 # Connect to device
 device = dai.Device(pipeline)
+capture_interval = 2  # Set this to your desired interval
 # END OF: FOR CAMERA
+
+# START OF: FOR TAIP
+# model = yolov5.load('/home/455Team/EGH455-UAV-Project/ui/dashboard/TAIP_model.pt') 
+# END OF: FOR TAIP
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -117,14 +126,26 @@ def get_frame():
         print('Bootloader version:', device.getBootloaderVersion())
     print('Device name:', device.getDeviceName())
 
-    while True:
-        # Output queue will be used to get the RGB frames from the output defined above
-        qRgb = device.getOutputQueue(name="rgb", maxSize=30, blocking=False)
-        inRgb = qRgb.get()  # blocking call, will wait until new data has arrived
-        image = inRgb.getCvFrame()
+    # Output queue will be used to get the RGB frames from the output defined above
+    qRgb = device.getOutputQueue(name="rgb", maxSize=30, blocking=False)
+    # qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False) # DRAFT
 
+    while True:
+        inRgb = qRgb.get()  # blocking call, will wait until new data has arrived
+        # inDet = qDet.get() # DRAFT
+
+        # with no prediction
+        image = inRgb.getCvFrame()
         _, jpeg = cv2.imencode('.jpg', image)
         frame = jpeg.tobytes()
+
+        # with prediction (still working on this)
+        # image = inRgb.getCvFrame()
+        # _, jpeg = cv2.imencode('.jpg', image)
+        # result = model(image)
+        # print(result)
+        # result.save('/results/result.jpg') 
+        # frame = jpeg.tobytes()
 
         # time.sleep(capture_interval)
 
