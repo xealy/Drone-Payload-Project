@@ -14,6 +14,7 @@ import time
 bp = Blueprint('main', __name__)
 
 
+# START OF: FOR CAMERA
 # Create pipeline
 pipeline = dai.Pipeline()
 
@@ -29,6 +30,7 @@ camRgb.video.link(xoutRgb.input)
 
 # Connect to device
 device = dai.Device(pipeline)
+# END OF: FOR CAMERA
 
 
 @bp.route('/', methods=['GET', 'POST'])
