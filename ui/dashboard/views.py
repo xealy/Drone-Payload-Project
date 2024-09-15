@@ -1,12 +1,36 @@
 import os
-from flask import Blueprint, send_from_directory, render_template, request, redirect
+from flask import Blueprint, send_from_directory, render_template, Response, request, redirect
 from .models import DataModel, ImageModel, MeasurementChart
 from . import db
-from sqlalchemy import desc, asc
-from .forms import TimeRangeForm
+from sqlalchemy import inspect, desc, asc
 from datetime import datetime
+# from .forms import TimeRangeForm
+
+# for camera
+import cv2
+import depthai as dai
+import time
 
 bp = Blueprint('main', __name__)
+
+
+# START OF: FOR CAMERA
+# Create pipeline
+pipeline = dai.Pipeline()
+
+# Properties
+camRgb = pipeline.create(dai.node.ColorCamera)
+camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+
+# Define source and output
+xoutRgb = pipeline.create(dai.node.XLinkOut)
+xoutRgb.setStreamName("rgb")
+camRgb.video.link(xoutRgb.input)
+
+# Connect to device
+device = dai.Device(pipeline)
+# END OF: FOR CAMERA
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -32,6 +56,7 @@ def index():
     NewChart.set_data('Ammonia', nh3_values_array)
     NewChart.set_data('OX', ox_values_array)
     NewChart.set_data('RED', red_values_array)
+
     ChartJSON = NewChart.get()
 
     return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
@@ -48,6 +73,7 @@ def target_detection():
 @bp.route('/data_logs', methods=['GET', 'POST'])
 def data_logs():
     data = db.session.query(DataModel)
+
     # data_selection = request.args.get('id') # to get url query params
 
     # EXAMPLE FORM
@@ -66,8 +92,6 @@ def data_logs():
     #     # Process the form data as needed
     #     # ~~~
 
-
-
     return render_template('data_logs.html', data=data)
 
 
@@ -85,3 +109,30 @@ def system_logs():
 def send_js(path):
     return send_from_directory('static', path)
 
+
+def get_frame():
+    print('Connected cameras:', device.getConnectedCameraFeatures())
+    print('Usb speed:', device.getUsbSpeed().name)
+    if device.getBootloaderVersion() is not None:
+        print('Bootloader version:', device.getBootloaderVersion())
+    print('Device name:', device.getDeviceName())
+
+    while True:
+        # Output queue will be used to get the RGB frames from the output defined above
+        qRgb = device.getOutputQueue(name="rgb", maxSize=30, blocking=False)
+        inRgb = qRgb.get()  # blocking call, will wait until new data has arrived
+        image = inRgb.getCvFrame()
+
+        _, jpeg = cv2.imencode('.jpg', image)
+        frame = jpeg.tobytes()
+
+        # time.sleep(capture_interval)
+
+        yield (b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+            
+
+
+@bp.route('/video_feed')
+def video_feed():
+    return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
