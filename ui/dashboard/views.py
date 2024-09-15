@@ -1,9 +1,10 @@
 import os
 from flask import Blueprint, send_from_directory, render_template, request, redirect
 from .models import DataModel, ImageModel, MeasurementChart
+# from .models import MeasurementChart
 from . import db
-from sqlalchemy import desc, asc
-from .forms import TimeRangeForm
+from sqlalchemy import inspect, desc, asc
+# from .forms import TimeRangeForm
 from datetime import datetime
 
 bp = Blueprint('main', __name__)
@@ -11,6 +12,10 @@ bp = Blueprint('main', __name__)
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
+    inspector = inspect(db.engine)
+    table_names = inspector.get_table_names()
+    print(table_names)
+
     latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
     data = db.session.query(DataModel)
 
@@ -32,6 +37,7 @@ def index():
     NewChart.set_data('Ammonia', nh3_values_array)
     NewChart.set_data('OX', ox_values_array)
     NewChart.set_data('RED', red_values_array)
+
     ChartJSON = NewChart.get()
 
     return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
@@ -48,6 +54,7 @@ def target_detection():
 @bp.route('/data_logs', methods=['GET', 'POST'])
 def data_logs():
     data = db.session.query(DataModel)
+
     # data_selection = request.args.get('id') # to get url query params
 
     # EXAMPLE FORM
@@ -65,8 +72,6 @@ def data_logs():
     #     to_time = form.to_time.data
     #     # Process the form data as needed
     #     # ~~~
-
-
 
     return render_template('data_logs.html', data=data)
 
