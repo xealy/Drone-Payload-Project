@@ -1,21 +1,38 @@
 import os
-from flask import Blueprint, send_from_directory, render_template, request, redirect
+from flask import Blueprint, send_from_directory, render_template, Response, request, redirect
 from .models import DataModel, ImageModel, MeasurementChart
-# from .models import MeasurementChart
 from . import db
 from sqlalchemy import inspect, desc, asc
-# from .forms import TimeRangeForm
 from datetime import datetime
+# from .forms import TimeRangeForm
+
+# for camera
+import cv2
+import depthai as dai
+import time
 
 bp = Blueprint('main', __name__)
 
 
+# Create pipeline
+pipeline = dai.Pipeline()
+
+# Properties
+camRgb = pipeline.create(dai.node.ColorCamera)
+camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+
+# Define source and output
+xoutRgb = pipeline.create(dai.node.XLinkOut)
+xoutRgb.setStreamName("rgb")
+camRgb.video.link(xoutRgb.input)
+
+# Connect to device
+device = dai.Device(pipeline)
+
+
 @bp.route('/', methods=['GET', 'POST'])
 def index():
-    inspector = inspect(db.engine)
-    table_names = inspector.get_table_names()
-    print(table_names)
-
     latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
     data = db.session.query(DataModel)
 
@@ -90,3 +107,30 @@ def system_logs():
 def send_js(path):
     return send_from_directory('static', path)
 
+
+def get_frame():
+    print('Connected cameras:', device.getConnectedCameraFeatures())
+    print('Usb speed:', device.getUsbSpeed().name)
+    if device.getBootloaderVersion() is not None:
+        print('Bootloader version:', device.getBootloaderVersion())
+    print('Device name:', device.getDeviceName())
+
+    while True:
+        # Output queue will be used to get the RGB frames from the output defined above
+        qRgb = device.getOutputQueue(name="rgb", maxSize=30, blocking=False)
+        inRgb = qRgb.get()  # blocking call, will wait until new data has arrived
+        image = inRgb.getCvFrame()
+
+        _, jpeg = cv2.imencode('.jpg', image)
+        frame = jpeg.tobytes()
+
+        # time.sleep(capture_interval)
+
+        yield (b'--frame\r\n'
+            b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+            
+
+
+@bp.route('/video_feed')
+def video_feed():
+    return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
