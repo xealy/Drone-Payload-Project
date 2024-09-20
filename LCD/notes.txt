@@ -1,0 +1,3 @@
+Uncomment these lines in "~/.bashrc" to display_ip on LCD on boot
+# source /home/455Team/Documents/egh455-merged-env/bin/activate
+# python3 /home/455Team/Documents/EGH455-UAV-Project/LCD/display_ip.py &
