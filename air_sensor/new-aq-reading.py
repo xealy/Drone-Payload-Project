@@ -71,7 +71,7 @@ try:
         }
 
         try:
-            response = requests.post("http://127.0.0.1:5000/post_air_quality", json=data)
+            response = requests.post("http://127.0.0.1:5000/", json=data)
             if response.status_code == 200:
                 print("Data posted successfully.")
             else:
