@@ -1,6 +1,5 @@
 # ALEX MADE THIS
 
-# import logging
 import time
 import datetime
 from enviroplus import gas
@@ -8,17 +7,6 @@ from bme280 import BME280
 from ltr559 import LTR559
 from smbus2 import SMBus
 import requests
-
-# logging.basicConfig(
-#     format="%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s",
-#     level=logging.INFO,
-#     datefmt="%Y-%m-%d %H:%M:%S")
-
-# logging.info("""gas.py - Print readings from the MICS6814 Gas sensor.
-
-# Press Ctrl+C to exit!
-
-# """)
 
 try:
     while True:
@@ -54,9 +42,6 @@ try:
         print("Reducing Gases: ", gases[0], "Ohms")
         print("Oxidising Gases: ", gases[1], "Ohms")
         print("NH3 Gases: ", gases[2], "Ohms")
-
-        # ADDITIONAL LOGGING
-        # logging.info(readings)
 
         # POST REQUEST
         data = {
