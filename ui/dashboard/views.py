@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, send_from_directory, render_template, Response, request, redirect
+from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for
 from .models import DataModel, ImageModel, MeasurementChart
 from . import db
 from sqlalchemy import inspect, desc, asc
@@ -240,3 +240,49 @@ def get_frame():
 @bp.route('/video_feed')
 def video_feed():
     return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
+# POST REQUEST ROUTES (from other scripts)
+@bp.route('/post_air_quality', methods=['GET', 'POST'])
+def post_air_quality():
+    if request.method == 'POST':
+        print("we got a post request :))")
+        data = request.get_json()
+        if data:
+            print(f"Received data: {data}")
+        
+        # save data to database file
+        print(data['temperature'])
+
+        # Extract data from the request
+        timestamp = datetime.strptime(data['timestamp'], '%d/%m/%Y %H:%M:%S')
+        reducing_gases = data['reducing_gases']
+        oxidising_gases = data['oxidising_gases']
+        ammonia_gases = data['nh3_gases']
+        temperature = data['temperature']
+        humidity = data['humidity']
+        air_pressure = data['pressure']
+        lux = data['light']
+
+        # Create a new DataModel instance
+        new_record = DataModel(
+            timestamp=timestamp,
+            reducing_gases=reducing_gases,
+            oxidising_gases=oxidising_gases,
+            ammonia_gases=ammonia_gases,
+            temperature=temperature,
+            humidity=humidity,
+            air_pressure=air_pressure,
+            lux=lux,
+        )
+
+        # Add the record to the session and commit
+        try:
+            db.session.add(new_record)
+            db.session.commit()
+            print("Record added successfully")
+        except Exception as e:
+            db.session.rollback()
+            print("An error occurred")
+
+    return redirect(url_for('main.index'))

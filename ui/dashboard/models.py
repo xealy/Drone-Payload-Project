@@ -2,6 +2,23 @@ from . import db
 from pychartjs import BaseChart, ChartType, Color, Options
 
 
+# OLD DataModel
+# class DataModel(db.Model):
+#     __tablename__ = 'data'
+#     id = db.Column(db.Integer, primary_key=True, nullable=False)
+#     timestamp = db.Column(db.DateTime, nullable=False)
+#     reducing_gases = db.Column(db.String, nullable=True)
+#     oxidising_gases = db.Column(db.String, nullable=True)
+#     ammonia_gases = db.Column(db.String, nullable=True)
+#     temperature = db.Column(db.String, nullable=True)
+#     humidity = db.Column(db.String, nullable=True)
+#     air_pressure = db.Column(db.String, nullable=True)
+#     lux = db.Column(db.String, nullable=True)
+#     coordinates = db.Column(db.String, nullable=True)
+#     valve = db.Column(db.String, nullable=True)
+#     gauge = db.Column(db.String, nullable=True)
+
+
 class DataModel(db.Model):
     __tablename__ = 'data'
     id = db.Column(db.Integer, primary_key=True, nullable=False)
@@ -13,9 +30,6 @@ class DataModel(db.Model):
     humidity = db.Column(db.String, nullable=True)
     air_pressure = db.Column(db.String, nullable=True)
     lux = db.Column(db.String, nullable=True)
-    coordinates = db.Column(db.String, nullable=True)
-    valve = db.Column(db.String, nullable=True)
-    gauge = db.Column(db.String, nullable=True)
 
 
 class ImageModel(db.Model):

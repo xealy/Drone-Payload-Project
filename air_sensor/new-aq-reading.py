@@ -71,7 +71,7 @@ try:
         }
 
         try:
-            response = requests.post("http://127.0.0.1:5000/", json=data)
+            response = requests.post("http://127.0.0.1:5000/post_air_quality", json=data)
             if response.status_code == 200:
                 print("Data posted successfully.")
             else:
@@ -80,6 +80,6 @@ try:
             print(f"Error posting data: {e}")
 
 
-        time.sleep(1.0)
+        time.sleep(4.0)
 except KeyboardInterrupt:
     pass
