@@ -19,6 +19,7 @@ import argparse
 import json
 import blobconverter
 
+
 bp = Blueprint('main', __name__)
 
 
@@ -26,7 +27,7 @@ bp = Blueprint('main', __name__)
 
 # NEW TAIP CONFIG
 # parse config
-configPath = Path('/home/455Team/EGH455-UAV-Project/ui/dashboard/best.json')
+configPath = Path('/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/best.json')
 if not configPath.exists():
     raise ValueError("Path {} does not exist!".format(configPath))
 
@@ -55,7 +56,7 @@ labels = nnMappings.get("labels", {})
 
 # get model path
 # nnPath = args.model
-nnPath = '/home/455Team/EGH455-UAV-Project/ui/dashboard/best_openvino_2022.1_6shave.blob'
+nnPath = '/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/best_openvino_2022.1_6shave.blob'
 if not Path(nnPath).exists():
     print("No blob found at {}. Looking into DepthAI model zoo.".format(nnPath))
     nnPath = str(blobconverter.from_zoo('best_openvino_2022.1_6shave.blob', shaves = 6, zoo_type = "depthai", use_cache=True))
