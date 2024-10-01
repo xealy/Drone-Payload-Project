@@ -22,7 +22,8 @@ GPIO.setup(14, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
 def ServoDrill(total_time, direction):
     GPIO.setup(mosfetpin, GPIO.OUT)
     pwm24.start(100)
-    drill = AngularServo(liftpin, min_pulse_width=0.001, max_pulse_width=0.002)
+    liftpin = 1 # dummy value
+    drill = AngularServo(liftpin, min_pulse_width=0.001, max_pulse_width=0.002) # what is lift pin ?????
     if direction == 'stop':
         drill.angle = 0;
     else :

@@ -2,7 +2,7 @@ import time
 # from smbus2 import SMBus - may not be needed, or needed for temp 
 from bme280 import BME280 
 from ltr559 import LTR559 
-from envirplus import gas 
+from enviroplus import gas 
 from pms5003 import PMS5003 
 from enviroplus.noise import Noise 
 from subprocess import PIPE, Popen
