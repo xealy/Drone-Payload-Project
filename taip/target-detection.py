@@ -1,15 +1,8 @@
-import os
-from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for, make_response
-from .models import DataModel, ImageModel, MeasurementChart
-from . import db
-from sqlalchemy import inspect, desc, asc
-from datetime import datetime
-# from .forms import TimeRangeForm
-
 # Camera imports
 import cv2
 import depthai as dai
 import time
+from datetime import datetime
 
 # TAIP imports
 from pathlib import Path
@@ -18,10 +11,9 @@ import numpy as np
 import argparse
 import json
 import blobconverter
+
+import requests
 import base64
-
-
-bp = Blueprint('main', __name__)
 
 
 # NEW TAIP CONFIG
@@ -103,127 +95,14 @@ device = dai.Device(pipeline)
 # END OF: NEW TAIP CONFIG
 
 
-@bp.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        print("we got a post request :))")
-        data = request.get_json()
-        if data:
-            print(f"Received data: {data}")
-        
-        # save data to database file
-        print(data['temperature'])
-
-        # Extract data from the request
-        timestamp = datetime.strptime(data['timestamp'], '%d/%m/%Y %H:%M:%S')
-        reducing_gases = data['reducing_gases']
-        oxidising_gases = data['oxidising_gases']
-        ammonia_gases = data['nh3_gases']
-        temperature = data['temperature']
-        humidity = data['humidity']
-        air_pressure = data['pressure']
-        lux = data['light']
-
-        # Create a new DataModel instance
-        new_record = DataModel(
-            timestamp=timestamp,
-            reducing_gases=reducing_gases,
-            oxidising_gases=oxidising_gases,
-            ammonia_gases=ammonia_gases,
-            temperature=temperature,
-            humidity=humidity,
-            air_pressure=air_pressure,
-            lux=lux,
-        )
-
-        # Add the record to the session and commit
-        try:
-            db.session.add(new_record)
-            db.session.commit()
-            print("Record added successfully")
-        except Exception as e:
-            db.session.rollback()
-            print("An error occurred")
-        
-        # Redirect to the same route to trigger a GET request
-        return redirect(url_for('main.index'))
-
-    latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
-    data = db.session.query(DataModel)
-
-    NewChart = MeasurementChart()
-    NewChart.data.label = "Air Quality"
-
-    labels_array = []
-    nh3_values_array = []
-    ox_values_array = []
-    red_values_array = []
-
-    for record in data:
-        labels_array.append(record.timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
-        red_values_array.append(record.reducing_gases)
-        ox_values_array.append(record.oxidising_gases)
-        nh3_values_array.append(record.ammonia_gases)
-
-    NewChart.set_labels(labels_array)
-    NewChart.set_data('Ammonia', nh3_values_array)
-    NewChart.set_data('OX', ox_values_array)
-    NewChart.set_data('RED', red_values_array)
-
-    ChartJSON = NewChart.get()
-
-    return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
-
-
-@bp.route('/target_detection', methods=['GET', 'POST'])
-def target_detection():
-    data = db.session.query(DataModel)
-    images = db.session.query(ImageModel)
-
-    return render_template('target_detection.html', data=data, images=images)
-
-
-@bp.route('/data_logs', methods=['GET', 'POST'])
-def data_logs():
-    data = db.session.query(DataModel)
-
-    # data_selection = request.args.get('id') # to get url query params
-
-    # EXAMPLE FORM
-    # categoryForm = DropdownForm()
-    # selection = categoryForm.category.data
-    # if selection == "All Categories":
-    #     models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # else:
-    #     models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
-    # return render_template('data_logs.html', data=data, form=categoryForm)
-
-    # form = TimeRangeForm()
-    # if form.validate_on_submit():
-    #     from_time = form.from_time.data
-    #     to_time = form.to_time.data
-    #     # Process the form data as needed
-    #     # ~~~
-
-    return render_template('data_logs.html', data=data)
-
-
-@bp.route('/system_logs', methods=['GET', 'POST'])
-def system_logs():
-    data = db.session.query(DataModel)
-
-    # models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
-
-    return render_template('system_logs.html', data=data)
-
-
-@bp.route('/static/<path:path>')
-def send_js(path):
-    return send_from_directory('static', path)
-
-
 def get_frame():
+    # # Diagnostic print statements
+    # print('Connected cameras:', device.getConnectedCameraFeatures())
+    # print('Usb speed:', device.getUsbSpeed().name)
+    # if device.getBootloaderVersion() is not None:
+    #     print('Bootloader version:', device.getBootloaderVersion())
+    # print('Device name:', device.getDeviceName())
+
     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
     qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
@@ -270,25 +149,48 @@ def get_frame():
             currentTime = time.monotonic()
             if currentTime - lastSavedTime >= 2:
                 currentDatetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/targets/{currentDatetime}.jpg'
-                cv2.imwrite(new_image, frame)
+                cv2.imwrite(f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/targets/{currentDatetime}.jpg', frame)
                 lastSavedTime = currentTime
 
             # save detection as well
-            # ~~~
 
             # save all this to database
-            
-
 
             frame_with_bbox = jpeg.tobytes()
+            frame_bytestring = (b'--frame\r\n'
+                                b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
 
-        yield (b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
+            frame_base64_encoded = base64.b64encode(frame_bytestring).decode('utf-8')
 
+        # POST REQUEST
+        data = {
+            "frame": frame_base64_encoded
+        }
 
-@bp.route('/video_feed')
-def video_feed():
-    return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
+        try:
+            response = requests.post("http://127.0.0.1:5000/video_feed", json=data)
+            if response.status_code == 200:
+                print("Data posted successfully.")
+            else:
+                print(f"Failed to post data. Status code: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error posting data: {e}")
 
+# Call function
+get_frame()
 
+# FLASK ROUTE
+# @bp.route('/video_feed', methods=['GET', 'POST'])
+# def video_feed():
+#     if request.method == 'POST':
+#         print("we got a post request :))")
+
+#         data = request.get_json()
+#         base64_encoded_frame = data.get("frame")
+        
+#         if base64_encoded_frame:
+#             # print(f"Received data: {base64_encoded_frame}")
+#             frame_bytestring = base64.b64decode(base64_encoded_frame)
+
+#         return Response(frame_bytestring, mimetype='multipart/x-mixed-replace; boundary=frame')
+        
