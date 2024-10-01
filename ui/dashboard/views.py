@@ -202,7 +202,7 @@ def target_detection():
         return redirect(url_for('main.target_detection'))
 
     data = db.session.query(DataModel)
-    images = db.session.query(ImageModel)
+    images = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp))
 
     return render_template('target_detection.html', data=data, images=images)
 
