@@ -1,9 +1,10 @@
 import os
-from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for, make_response
+from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for, make_response, current_app
 from .models import DataModel, ImageModel, MeasurementChart
 from . import db
 from sqlalchemy import inspect, desc, asc
 from datetime import datetime
+import requests
 # from .forms import TimeRangeForm
 
 # Camera imports
@@ -23,11 +24,9 @@ import blobconverter
 bp = Blueprint('main', __name__)
 
 
-# capture_interval = 2  # Set this to your desired interval
-
-# NEW TAIP CONFIG
-# parse config
-configPath = Path('/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/best.json')
+# START OF TAIP CONFIG
+# Parse config
+configPath = Path('/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/taip_assets/best.json')
 if not configPath.exists():
     raise ValueError("Path {} does not exist!".format(configPath))
 
@@ -35,11 +34,11 @@ with configPath.open() as f:
     config = json.load(f)
 nnConfig = config.get("nn_config", {})
 
-# parse input shape
+# Parse input shape
 if "input_size" in nnConfig:
     W, H = tuple(map(int, nnConfig.get("input_size").split('x')))
 
-# extract metadata
+# Extract metadata
 metadata = nnConfig.get("NN_specific_metadata", {})
 classes = metadata.get("classes", {})
 coordinates = metadata.get("coordinates", {})
@@ -50,17 +49,17 @@ confidenceThreshold = metadata.get("confidence_threshold", {})
 
 print(metadata)
 
-# parse labels
+# Parse labels
 nnMappings = config.get("mappings", {})
 labels = nnMappings.get("labels", {})
 
-# get model path
-# nnPath = args.model
-nnPath = '/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/best_openvino_2022.1_6shave.blob'
+# Get model path
+nnPath = '/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/taip_assets/best_openvino_2022.1_6shave.blob'
 if not Path(nnPath).exists():
     print("No blob found at {}. Looking into DepthAI model zoo.".format(nnPath))
     nnPath = str(blobconverter.from_zoo('best_openvino_2022.1_6shave.blob', shaves = 6, zoo_type = "depthai", use_cache=True))
-# sync outputs
+
+# Sync outputs
 syncNN = True
 
 # Create pipeline
@@ -71,13 +70,11 @@ camRgb = pipeline.create(dai.node.ColorCamera)
 detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
 xoutRgb = pipeline.create(dai.node.XLinkOut)
 nnOut = pipeline.create(dai.node.XLinkOut)
-
 xoutRgb.setStreamName("rgb")
 nnOut.setStreamName("nn")
 
 # Properties
 camRgb.setPreviewSize(W, H)
-
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -101,7 +98,7 @@ detectionNetwork.out.link(nnOut.input)
 
 # *** Connect to device
 device = dai.Device(pipeline)
-# END OF: NEW TAIP CONFIG
+# END OF TAIP CONFIG
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -111,9 +108,6 @@ def index():
         data = request.get_json()
         if data:
             print(f"Received data: {data}")
-        
-        # save data to database file
-        print(data['temperature'])
 
         # Extract data from the request
         timestamp = datetime.strptime(data['timestamp'], '%d/%m/%Y %H:%M:%S')
@@ -178,10 +172,117 @@ def index():
 
 @bp.route('/target_detection', methods=['GET', 'POST'])
 def target_detection():
+    if request.method == 'POST':
+        print("we got a post request :))")
+        json_data = request.get_json()
+
+        # if json_data:
+        #     print(f"Received data: {json_data['timestamp']}")
+
+        # Extract data from JSON object
+        timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
+        image_path = json_data['image_path']
+
+        # Create a new ImageModel instance
+        new_record = ImageModel(
+            timestamp=timestamp,
+            image_path=image_path
+        )
+
+        # Add the record to the session and commit
+        try:
+            db.session.add(new_record)
+            db.session.commit()
+            print("Record added successfully")
+        except Exception as e:
+            db.session.rollback()
+            print("An error occurred")
+        
+        # Redirect to the same route to trigger a GET request
+        return redirect(url_for('main.target_detection'))
+
     data = db.session.query(DataModel)
-    images = db.session.query(ImageModel)
+    images = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp))
 
     return render_template('target_detection.html', data=data, images=images)
+
+
+def get_frame():
+    # Output queues will be used to get the rgb frames and nn data from the outputs defined above
+    qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+    qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
+
+    frame = None
+    detections = []
+    startTime = time.monotonic()
+    lastSavedTime = startTime # ALEX ADDED THIS
+    counter = 0
+    color2 = (255, 255, 255)
+
+    # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
+    def frameNorm(frame, bbox):
+        normVals = np.full(len(bbox), frame.shape[0])
+        normVals[::2] = frame.shape[1]
+        return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
+
+    def displayFrame(name, frame, detections):
+        color = (255, 0, 0)
+        for detection in detections:
+            bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
+            cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+
+    while True:
+        inRgb = qRgb.get()
+        inDet = qDet.get()
+
+        if inRgb is not None:
+            frame = inRgb.getCvFrame()
+            cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
+                        (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
+
+        if inDet is not None:
+            detections = inDet.detections
+            counter += 1
+
+        if frame is not None:
+            displayFrame("rgb", frame, detections)
+            _, jpeg = cv2.imencode('.jpg', frame)
+
+            # ALEX ADDED THIS: save image every 2 seconds (for image stream)
+            currentTime = time.monotonic()
+            if currentTime - lastSavedTime >= 2:
+                current_datetime = datetime.now()
+                currentDatetimeFile = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+
+                current_datetime_string = current_datetime.strftime("%d/%m/%Y %H:%M:%S") # for db record
+                new_image_to_serve = f'image_stream/{currentDatetimeFile}.jpg' # for db record
+
+                new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
+                cv2.imwrite(new_image, frame)
+                lastSavedTime = currentTime
+
+                # SEND POST REQUEST to 'target_detection' endpoint
+                data = {
+                    "timestamp": current_datetime_string,
+                    "image_path": new_image_to_serve
+                }
+                response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
+                if response.status_code == 200:
+                    print("Data posted successfully.")
+                else:
+                    print(f"Failed to post data. Status code: {response.status_code}")
+
+            frame_with_bbox = jpeg.tobytes()
+
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
+
+
+@bp.route('/video_feed', methods=['GET', 'POST'])
+def video_feed():
+    return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 @bp.route('/data_logs', methods=['GET', 'POST'])
@@ -222,65 +323,4 @@ def system_logs():
 @bp.route('/static/<path:path>')
 def send_js(path):
     return send_from_directory('static', path)
-
-
-def get_frame():
-    # # Diagnostic print statements
-    # print('Connected cameras:', device.getConnectedCameraFeatures())
-    # print('Usb speed:', device.getUsbSpeed().name)
-    # if device.getBootloaderVersion() is not None:
-    #     print('Bootloader version:', device.getBootloaderVersion())
-    # print('Device name:', device.getDeviceName())
-
-    # Output queues will be used to get the rgb frames and nn data from the outputs defined above
-    qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-    qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
-
-    frame = None
-    detections = []
-    startTime = time.monotonic()
-    counter = 0
-    color2 = (255, 255, 255)
-
-    # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
-    def frameNorm(frame, bbox):
-        normVals = np.full(len(bbox), frame.shape[0])
-        normVals[::2] = frame.shape[1]
-        return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
-
-    def displayFrame(name, frame, detections):
-        color = (255, 0, 0)
-        for detection in detections:
-            bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-            cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
-
-    while True:
-        inRgb = qRgb.get()
-        inDet = qDet.get()
-
-        if inRgb is not None:
-            frame = inRgb.getCvFrame()
-            cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
-                        (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
-
-        if inDet is not None:
-            detections = inDet.detections
-            counter += 1
-
-        if frame is not None:
-            displayFrame("rgb", frame, detections)
-            _, jpeg = cv2.imencode('.jpg', frame)
-            frame_with_bbox = jpeg.tobytes()
-
-        # time.sleep(capture_interval)
-
-        yield (b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
-
-
-@bp.route('/video_feed')
-def video_feed():
-    return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
