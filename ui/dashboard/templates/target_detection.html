@@ -3,6 +3,11 @@
 {% block head %}
 <link rel="stylesheet" href="/static/css/index.css?nocache={timestamp}" type="text/css">
 <!--<link rel="stylesheet" href="/static/css/index.css">-->
+<script>
+  setTimeout(function() {
+      window.location.reload();
+  }, 5000); // Refresh the page every 5 seconds
+</script>
 {% endblock %}
 
 {% block content %}
@@ -15,7 +20,8 @@
                 <p class="pt-2">Image Stream</p>
                 {% for image in images %}
                     <div class="card">
-                        <img class="card-img-top" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap">
+                        <!-- <img class="card-img-top" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap"> -->
+                        <img class="card-img-top" src="{{ url_for('static', filename=image.image_path) }}" alt="Card image cap">
                     </div>
                 {% endfor %}
             </div>

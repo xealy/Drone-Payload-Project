@@ -1,9 +1,10 @@
 import os
-from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for, make_response
+from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for, make_response, current_app
 from .models import DataModel, ImageModel, MeasurementChart
 from . import db
 from sqlalchemy import inspect, desc, asc
 from datetime import datetime
+import requests
 # from .forms import TimeRangeForm
 
 # Camera imports
@@ -18,14 +19,13 @@ import numpy as np
 import argparse
 import json
 import blobconverter
-import base64
 
 
 bp = Blueprint('main', __name__)
 
 
-# NEW TAIP CONFIG
-# parse config
+# START OF TAIP CONFIG
+# Parse config
 configPath = Path('/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/best.json')
 if not configPath.exists():
     raise ValueError("Path {} does not exist!".format(configPath))
@@ -34,11 +34,11 @@ with configPath.open() as f:
     config = json.load(f)
 nnConfig = config.get("nn_config", {})
 
-# parse input shape
+# Parse input shape
 if "input_size" in nnConfig:
     W, H = tuple(map(int, nnConfig.get("input_size").split('x')))
 
-# extract metadata
+# Extract metadata
 metadata = nnConfig.get("NN_specific_metadata", {})
 classes = metadata.get("classes", {})
 coordinates = metadata.get("coordinates", {})
@@ -49,17 +49,17 @@ confidenceThreshold = metadata.get("confidence_threshold", {})
 
 print(metadata)
 
-# parse labels
+# Parse labels
 nnMappings = config.get("mappings", {})
 labels = nnMappings.get("labels", {})
 
-# get model path
-# nnPath = args.model
+# Get model path
 nnPath = '/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/best_openvino_2022.1_6shave.blob'
 if not Path(nnPath).exists():
     print("No blob found at {}. Looking into DepthAI model zoo.".format(nnPath))
     nnPath = str(blobconverter.from_zoo('best_openvino_2022.1_6shave.blob', shaves = 6, zoo_type = "depthai", use_cache=True))
-# sync outputs
+
+# Sync outputs
 syncNN = True
 
 # Create pipeline
@@ -70,13 +70,11 @@ camRgb = pipeline.create(dai.node.ColorCamera)
 detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
 xoutRgb = pipeline.create(dai.node.XLinkOut)
 nnOut = pipeline.create(dai.node.XLinkOut)
-
 xoutRgb.setStreamName("rgb")
 nnOut.setStreamName("nn")
 
 # Properties
 camRgb.setPreviewSize(W, H)
-
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -100,7 +98,7 @@ detectionNetwork.out.link(nnOut.input)
 
 # *** Connect to device
 device = dai.Device(pipeline)
-# END OF: NEW TAIP CONFIG
+# END OF TAIP CONFIG
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -110,9 +108,6 @@ def index():
         data = request.get_json()
         if data:
             print(f"Received data: {data}")
-        
-        # save data to database file
-        print(data['temperature'])
 
         # Extract data from the request
         timestamp = datetime.strptime(data['timestamp'], '%d/%m/%Y %H:%M:%S')
@@ -177,50 +172,39 @@ def index():
 
 @bp.route('/target_detection', methods=['GET', 'POST'])
 def target_detection():
+    if request.method == 'POST':
+        print("we got a post request :))")
+        json_data = request.get_json()
+
+        # if json_data:
+        #     print(f"Received data: {json_data['timestamp']}")
+
+        # Extract data from JSON object
+        timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
+        image_path = json_data['image_path']
+
+        # Create a new ImageModel instance
+        new_record = ImageModel(
+            timestamp=timestamp,
+            image_path=image_path
+        )
+
+        # Add the record to the session and commit
+        try:
+            db.session.add(new_record)
+            db.session.commit()
+            print("Record added successfully")
+        except Exception as e:
+            db.session.rollback()
+            print("An error occurred")
+        
+        # Redirect to the same route to trigger a GET request
+        return redirect(url_for('main.target_detection'))
+
     data = db.session.query(DataModel)
     images = db.session.query(ImageModel)
 
     return render_template('target_detection.html', data=data, images=images)
-
-
-@bp.route('/data_logs', methods=['GET', 'POST'])
-def data_logs():
-    data = db.session.query(DataModel)
-
-    # data_selection = request.args.get('id') # to get url query params
-
-    # EXAMPLE FORM
-    # categoryForm = DropdownForm()
-    # selection = categoryForm.category.data
-    # if selection == "All Categories":
-    #     models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # else:
-    #     models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
-    # return render_template('data_logs.html', data=data, form=categoryForm)
-
-    # form = TimeRangeForm()
-    # if form.validate_on_submit():
-    #     from_time = form.from_time.data
-    #     to_time = form.to_time.data
-    #     # Process the form data as needed
-    #     # ~~~
-
-    return render_template('data_logs.html', data=data)
-
-
-@bp.route('/system_logs', methods=['GET', 'POST'])
-def system_logs():
-    data = db.session.query(DataModel)
-
-    # models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
-
-    return render_template('system_logs.html', data=data)
-
-
-@bp.route('/static/<path:path>')
-def send_js(path):
-    return send_from_directory('static', path)
 
 
 def get_frame():
@@ -269,26 +253,74 @@ def get_frame():
             # ALEX ADDED THIS: save image every 2 seconds (for image stream)
             currentTime = time.monotonic()
             if currentTime - lastSavedTime >= 2:
-                currentDatetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/targets/{currentDatetime}.jpg'
+                current_datetime = datetime.now()
+                currentDatetimeFile = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+
+                current_datetime_string = current_datetime.strftime("%d/%m/%Y %H:%M:%S") # for db record
+                new_image_to_serve = f'image_stream/{currentDatetimeFile}.jpg' # for db record
+
+                new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
                 cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
 
-            # save detection as well
-            # ~~~
-
-            # save all this to database
-            
-
+                # SEND POST REQUEST to 'target_detection' endpoint
+                data = {
+                    "timestamp": current_datetime_string,
+                    "image_path": new_image_to_serve
+                }
+                response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
+                if response.status_code == 200:
+                    print("Data posted successfully.")
+                else:
+                    print(f"Failed to post data. Status code: {response.status_code}")
 
             frame_with_bbox = jpeg.tobytes()
 
-        yield (b'--frame\r\n'
-            b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
 
 
-@bp.route('/video_feed')
+@bp.route('/video_feed', methods=['GET', 'POST'])
 def video_feed():
     return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+
+@bp.route('/data_logs', methods=['GET', 'POST'])
+def data_logs():
+    data = db.session.query(DataModel)
+
+    # data_selection = request.args.get('id') # to get url query params
+
+    # EXAMPLE FORM
+    # categoryForm = DropdownForm()
+    # selection = categoryForm.category.data
+    # if selection == "All Categories":
+    #     models = db.session.query(MLModel).order_by(asc(MLModel.category))
+    # else:
+    #     models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
+    # return render_template('data_logs.html', data=data, form=categoryForm)
+
+    # form = TimeRangeForm()
+    # if form.validate_on_submit():
+    #     from_time = form.from_time.data
+    #     to_time = form.to_time.data
+    #     # Process the form data as needed
+    #     # ~~~
+
+    return render_template('data_logs.html', data=data)
+
+
+@bp.route('/system_logs', methods=['GET', 'POST'])
+def system_logs():
+    data = db.session.query(DataModel)
+
+    # models = db.session.query(MLModel).order_by(asc(MLModel.category))
+    # models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
+
+    return render_template('system_logs.html', data=data)
+
+
+@bp.route('/static/<path:path>')
+def send_js(path):
+    return send_from_directory('static', path)
 
