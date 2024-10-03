@@ -18,6 +18,7 @@ import numpy as np
 import argparse
 import json
 import blobconverter
+import base64
 
 
 bp = Blueprint('main', __name__)
@@ -185,16 +186,19 @@ def target_detection():
         json_data = request.get_json()
 
         # if json_data:
-        #     print(f"Received data: {json_data['timestamp']}")
+        #     print(f"Received data: {json_data['image_bytestring_encoded']}")
 
         # Extract data from JSON object
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
         image_path = json_data['image_path']
+        image_bytestring = json_data['image_bytestring_encoded']
+        # image_bytestring = base64.b64decode(image_bytestring_encoded)
 
         # Create a new ImageModel instance
         new_record = ImageModel(
             timestamp=timestamp,
-            image_path=image_path
+            image_path=image_path,
+            image_bytestring=image_bytestring
         )
 
         # Add the record to the session and commit
@@ -266,22 +270,25 @@ def get_frame():
 
                 current_datetime_string = current_datetime.strftime("%d/%m/%Y %H:%M:%S") # for db record
                 new_image_to_serve = f'image_stream/{currentDatetimeFile}.jpg' # for db record
+                frame_bytestring = jpeg.tobytes() # for db record
+                frame_bytestring_encoded = base64.b64encode(frame_bytestring).decode('utf-8')
 
                 new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
-                cv2.imwrite(new_image, frame)
+                # cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
 
                 # SEND POST REQUEST to 'target_detection' endpoint
                 data = {
                     "timestamp": current_datetime_string,
-                    "image_path": new_image_to_serve
+                    "image_path": new_image_to_serve,
+                    "image_bytestring_encoded": frame_bytestring_encoded
                 }
                 response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
                 if response.status_code == 200:
                     print("Data posted successfully.")
                 else:
                     print(f"Failed to post data. Status code: {response.status_code}")
-
+                
             frame_with_bbox = jpeg.tobytes()
 
             yield (b'--frame\r\n'
@@ -384,3 +391,9 @@ def system_logs():
 def send_js(path):
     return send_from_directory('static', path)
 
+
+# @bp.route('/static/<path:filename>')
+# def serve_static(filename):
+#     response = make_response(send_from_directory('static', filename))
+#     response.headers['Cache-Control'] = 'public, max-age=31536000'  # Cache for one year
+#     return response

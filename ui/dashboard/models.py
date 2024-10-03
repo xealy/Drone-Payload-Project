@@ -23,6 +23,7 @@ class ImageModel(db.Model):
     coordinates = db.Column(db.String, nullable=True)
     valve_status = db.Column(db.String, nullable=True)
     gauge_reading = db.Column(db.String, nullable=True)
+    image_bytestring = db.Column(db.Text, nullable=True)
 
 
 class MeasurementChart(BaseChart):

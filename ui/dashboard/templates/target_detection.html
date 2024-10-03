@@ -19,7 +19,7 @@
                 <p class="pt-2">Image Stream</p>
                 {% for image in images %}
                     <div class="card">
-                        <img class="card-img-top" src="{{ url_for('static', filename=image.image_path) }}" alt="Card image cap">
+                        <img class="card-img-top" src="data:image/jpeg;base64,{{ image.image_bytestring }}" alt="Card image cap">
                     </div>
                 {% endfor %}
             </div>
