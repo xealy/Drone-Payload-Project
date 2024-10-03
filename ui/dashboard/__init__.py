@@ -11,7 +11,7 @@ def create_app():
     app.secret_key = 'utroutoru'
 
     # configure sqlalchemy database uri in app
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database_mock.db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
 

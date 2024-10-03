@@ -6,7 +6,7 @@
 <script>
   setTimeout(function() {
       window.location.reload();
-  }, 5000); // Refresh the page every 5 seconds
+  }, 4000); // Refresh the page every 4 seconds
 </script>
 {% endblock %}
 
@@ -30,8 +30,7 @@
                     <div class="col bg-light text-center">
                         <p class="pt-2">Live Feed</p>
                         <div class="card p-1">
-                          <!-- <img style="height: 300px; max-width: 70%" class="card-img-top d-block m-auto" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap"> -->
-                          <img style="height: 300px; max-width: 70%" class="card-img-top d-block m-auto" src="{{ url_for('main.video_feed') }}">
+                          <img style="height: 300px; max-width: 40%" class="card-img-top d-block m-auto" src="{{ url_for('main.video_feed') }}">
                         </div>
                     </div>
                 </div>
