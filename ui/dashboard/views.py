@@ -211,6 +211,11 @@ def get_frame():
             cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+            label = labels[detection.label]
+
+            if label == "ArUCO":
+                output = pose_esitmation(frame, aruco_dict_type, k, d)
+                cv2.imshow('Estimated Pose', output)
 
     while True:
         inRgb = qRgb.get()
