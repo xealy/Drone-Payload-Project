@@ -7,98 +7,98 @@ from datetime import datetime
 import requests
 # from .forms import TimeRangeForm
 
-# Camera imports
-import cv2
-import depthai as dai
-import time
+# # Camera imports
+# import cv2
+# import depthai as dai
+# import time
 
-# TAIP imports
-from pathlib import Path
-import sys
-import numpy as np
-import argparse
-import json
-import blobconverter
+# # TAIP imports
+# from pathlib import Path
+# import sys
+# import numpy as np
+# import argparse
+# import json
+# import blobconverter
 
 
 bp = Blueprint('main', __name__)
 
 
-# START OF TAIP CONFIG
-# Parse config
-configPath = Path('/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/taip_assets/best.json')
-if not configPath.exists():
-    raise ValueError("Path {} does not exist!".format(configPath))
+# # START OF TAIP CONFIG
+# # Parse config
+# configPath = Path('/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/taip_assets/best.json')
+# if not configPath.exists():
+#     raise ValueError("Path {} does not exist!".format(configPath))
 
-with configPath.open() as f:
-    config = json.load(f)
-nnConfig = config.get("nn_config", {})
+# with configPath.open() as f:
+#     config = json.load(f)
+# nnConfig = config.get("nn_config", {})
 
-# Parse input shape
-if "input_size" in nnConfig:
-    W, H = tuple(map(int, nnConfig.get("input_size").split('x')))
+# # Parse input shape
+# if "input_size" in nnConfig:
+#     W, H = tuple(map(int, nnConfig.get("input_size").split('x')))
 
-# Extract metadata
-metadata = nnConfig.get("NN_specific_metadata", {})
-classes = metadata.get("classes", {})
-coordinates = metadata.get("coordinates", {})
-anchors = metadata.get("anchors", {})
-anchorMasks = metadata.get("anchor_masks", {})
-iouThreshold = metadata.get("iou_threshold", {})
-confidenceThreshold = metadata.get("confidence_threshold", {})
+# # Extract metadata
+# metadata = nnConfig.get("NN_specific_metadata", {})
+# classes = metadata.get("classes", {})
+# coordinates = metadata.get("coordinates", {})
+# anchors = metadata.get("anchors", {})
+# anchorMasks = metadata.get("anchor_masks", {})
+# iouThreshold = metadata.get("iou_threshold", {})
+# confidenceThreshold = metadata.get("confidence_threshold", {})
 
-print(metadata)
+# print(metadata)
 
-# Parse labels
-nnMappings = config.get("mappings", {})
-labels = nnMappings.get("labels", {})
+# # Parse labels
+# nnMappings = config.get("mappings", {})
+# labels = nnMappings.get("labels", {})
 
-# Get model path
-nnPath = '/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/taip_assets/best_openvino_2022.1_6shave.blob'
-if not Path(nnPath).exists():
-    print("No blob found at {}. Looking into DepthAI model zoo.".format(nnPath))
-    nnPath = str(blobconverter.from_zoo('best_openvino_2022.1_6shave.blob', shaves = 6, zoo_type = "depthai", use_cache=True))
+# # Get model path
+# nnPath = '/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/taip_assets/best_openvino_2022.1_6shave.blob'
+# if not Path(nnPath).exists():
+#     print("No blob found at {}. Looking into DepthAI model zoo.".format(nnPath))
+#     nnPath = str(blobconverter.from_zoo('best_openvino_2022.1_6shave.blob', shaves = 6, zoo_type = "depthai", use_cache=True))
 
-# Sync outputs
-syncNN = True
+# # Sync outputs
+# syncNN = True
 
-# Create pipeline
-pipeline = dai.Pipeline()
+# # Create pipeline
+# pipeline = dai.Pipeline()
 
-# Define sources and outputs
-camRgb = pipeline.create(dai.node.ColorCamera)
-detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
-xoutRgb = pipeline.create(dai.node.XLinkOut)
-nnOut = pipeline.create(dai.node.XLinkOut)
-xoutRgb.setStreamName("rgb")
-nnOut.setStreamName("nn")
+# # Define sources and outputs
+# camRgb = pipeline.create(dai.node.ColorCamera)
+# detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
+# xoutRgb = pipeline.create(dai.node.XLinkOut)
+# nnOut = pipeline.create(dai.node.XLinkOut)
+# xoutRgb.setStreamName("rgb")
+# nnOut.setStreamName("nn")
 
-# Properties
-camRgb.setPreviewSize(W, H)
-camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-camRgb.setInterleaved(False)
-camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-camRgb.setFps(40)
+# # Properties
+# camRgb.setPreviewSize(W, H)
+# camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+# camRgb.setInterleaved(False)
+# camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
+# camRgb.setFps(40)
 
-# Network specific settings
-detectionNetwork.setConfidenceThreshold(confidenceThreshold)
-detectionNetwork.setNumClasses(classes)
-detectionNetwork.setCoordinateSize(coordinates)
-detectionNetwork.setAnchors(anchors)
-detectionNetwork.setAnchorMasks(anchorMasks)
-detectionNetwork.setIouThreshold(iouThreshold)
-detectionNetwork.setBlobPath(nnPath)
-detectionNetwork.setNumInferenceThreads(2)
-detectionNetwork.input.setBlocking(False)
+# # Network specific settings
+# detectionNetwork.setConfidenceThreshold(confidenceThreshold)
+# detectionNetwork.setNumClasses(classes)
+# detectionNetwork.setCoordinateSize(coordinates)
+# detectionNetwork.setAnchors(anchors)
+# detectionNetwork.setAnchorMasks(anchorMasks)
+# detectionNetwork.setIouThreshold(iouThreshold)
+# detectionNetwork.setBlobPath(nnPath)
+# detectionNetwork.setNumInferenceThreads(2)
+# detectionNetwork.input.setBlocking(False)
 
-# Linking
-camRgb.preview.link(detectionNetwork.input)
-detectionNetwork.passthrough.link(xoutRgb.input)
-detectionNetwork.out.link(nnOut.input)
+# # Linking
+# camRgb.preview.link(detectionNetwork.input)
+# detectionNetwork.passthrough.link(xoutRgb.input)
+# detectionNetwork.out.link(nnOut.input)
 
-# *** Connect to device
-device = dai.Device(pipeline)
-# END OF TAIP CONFIG
+# # *** Connect to device
+# device = dai.Device(pipeline)
+# # END OF TAIP CONFIG
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -207,117 +207,134 @@ def target_detection():
     return render_template('target_detection.html', data=data, images=images)
 
 
-def get_frame():
-    # Output queues will be used to get the rgb frames and nn data from the outputs defined above
-    qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-    qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
+# def get_frame():
+#     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
+#     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+#     qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
 
-    frame = None
-    detections = []
-    startTime = time.monotonic()
-    lastSavedTime = startTime # ALEX ADDED THIS
-    counter = 0
-    color2 = (255, 255, 255)
+#     frame = None
+#     detections = []
+#     startTime = time.monotonic()
+#     lastSavedTime = startTime # ALEX ADDED THIS
+#     counter = 0
+#     color2 = (255, 255, 255)
 
-    # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
-    def frameNorm(frame, bbox):
-        normVals = np.full(len(bbox), frame.shape[0])
-        normVals[::2] = frame.shape[1]
-        return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
+#     # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
+#     def frameNorm(frame, bbox):
+#         normVals = np.full(len(bbox), frame.shape[0])
+#         normVals[::2] = frame.shape[1]
+#         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
-    def displayFrame(name, frame, detections):
-        color = (255, 0, 0)
-        for detection in detections:
-            bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
-            cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
-            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+#     def displayFrame(name, frame, detections):
+#         color = (255, 0, 0)
+#         for detection in detections:
+#             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
+#             cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+#             cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
+#             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
 
-    while True:
-        inRgb = qRgb.get()
-        inDet = qDet.get()
+#     while True:
+#         inRgb = qRgb.get()
+#         inDet = qDet.get()
 
-        if inRgb is not None:
-            frame = inRgb.getCvFrame()
-            cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
-                        (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
+#         if inRgb is not None:
+#             frame = inRgb.getCvFrame()
+#             cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
+#                         (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
 
-        if inDet is not None:
-            detections = inDet.detections
-            counter += 1
+#         if inDet is not None:
+#             detections = inDet.detections
+#             counter += 1
 
-        if frame is not None:
-            displayFrame("rgb", frame, detections)
-            _, jpeg = cv2.imencode('.jpg', frame)
+#         if frame is not None:
+#             displayFrame("rgb", frame, detections)
+#             _, jpeg = cv2.imencode('.jpg', frame)
 
-            # ALEX ADDED THIS: save image every 2 seconds (for image stream)
-            currentTime = time.monotonic()
-            if currentTime - lastSavedTime >= 2:
-                current_datetime = datetime.now()
-                currentDatetimeFile = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+#             # ALEX ADDED THIS: save image every 2 seconds (for image stream)
+#             currentTime = time.monotonic()
+#             if currentTime - lastSavedTime >= 2:
+#                 current_datetime = datetime.now()
+#                 currentDatetimeFile = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
 
-                current_datetime_string = current_datetime.strftime("%d/%m/%Y %H:%M:%S") # for db record
-                new_image_to_serve = f'image_stream/{currentDatetimeFile}.jpg' # for db record
+#                 current_datetime_string = current_datetime.strftime("%d/%m/%Y %H:%M:%S") # for db record
+#                 new_image_to_serve = f'image_stream/{currentDatetimeFile}.jpg' # for db record
 
-                new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
-                cv2.imwrite(new_image, frame)
-                lastSavedTime = currentTime
+#                 new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
+#                 cv2.imwrite(new_image, frame)
+#                 lastSavedTime = currentTime
 
-                # SEND POST REQUEST to 'target_detection' endpoint
-                data = {
-                    "timestamp": current_datetime_string,
-                    "image_path": new_image_to_serve
-                }
-                response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
-                if response.status_code == 200:
-                    print("Data posted successfully.")
-                else:
-                    print(f"Failed to post data. Status code: {response.status_code}")
+#                 # SEND POST REQUEST to 'target_detection' endpoint
+#                 data = {
+#                     "timestamp": current_datetime_string,
+#                     "image_path": new_image_to_serve
+#                 }
+#                 response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
+#                 if response.status_code == 200:
+#                     print("Data posted successfully.")
+#                 else:
+#                     print(f"Failed to post data. Status code: {response.status_code}")
 
-            frame_with_bbox = jpeg.tobytes()
+#             frame_with_bbox = jpeg.tobytes()
 
-            yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
+#             yield (b'--frame\r\n'
+#                 b'Content-Type: image/jpeg\r\n\r\n' + frame_with_bbox + b'\r\n\r\n')
 
 
-@bp.route('/video_feed', methods=['GET', 'POST'])
-def video_feed():
-    return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
+# @bp.route('/video_feed', methods=['GET', 'POST'])
+# def video_feed():
+#     return Response(get_frame(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
 @bp.route('/data_logs', methods=['GET', 'POST'])
 def data_logs():
-    data = db.session.query(DataModel)
+    data = db.session.query(DataModel).all()
+    images = db.session.query(ImageModel).all()
 
-    # data_selection = request.args.get('id') # to get url query params
+    # convert results to dictionary with timestamp as the key
+    data_dict = {item.timestamp: item for item in data}
+    images_dict = {item.timestamp: item for item in images}
 
-    # EXAMPLE FORM
-    # categoryForm = DropdownForm()
-    # selection = categoryForm.category.data
-    # if selection == "All Categories":
-    #     models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # else:
-    #     models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
-    # return render_template('data_logs.html', data=data, form=categoryForm)
+    # create list to store merged results
+    merged_results = []
 
-    # form = TimeRangeForm()
-    # if form.validate_on_submit():
-    #     from_time = form.from_time.data
-    #     to_time = form.to_time.data
-    #     # Process the form data as needed
-    #     # ~~~
+    # merge data based on timestamp
+    for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
+        merged_entry = {
+            'timestamp': timestamp,
+            'data': data_dict.get(timestamp),
+            'image': images_dict.get(timestamp)
+        }
+        merged_results.append(merged_entry)
 
-    return render_template('data_logs.html', data=data)
+
+    return render_template('data_logs.html', data=merged_results)
 
 
 @bp.route('/system_logs', methods=['GET', 'POST'])
 def system_logs():
-    data = db.session.query(DataModel)
+    data = db.session.query(DataModel).all()
+    images = db.session.query(ImageModel).all()
 
-    # models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
+    # convert results to dictionary with timestamp as the key
+    data_dict = {item.timestamp: item for item in data}
+    images_dict = {item.timestamp: item for item in images}
 
-    return render_template('system_logs.html', data=data)
+    # create list to store merged results
+    merged_results = []
+
+    # merge data based on timestamp
+    for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
+        merged_entry = {
+            'timestamp': timestamp,
+            'data': data_dict.get(timestamp),
+            'image': images_dict.get(timestamp)
+        }
+        merged_results.append(merged_entry)
+
+    print(merged_results[0])
+    print(merged_results[0]['image'].valve_status)
+
+    return render_template('system_logs.html', data=merged_results)
 
 
 @bp.route('/static/<path:path>')

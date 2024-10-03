@@ -39,17 +39,17 @@
                   <tbody>
                   {% for row in data %}
                     <tr>
-                        <th scope="row">{{ data[loop.index0].timestamp }}</th>
-                        <td>{{ data[loop.index0].reducing_gases }}</td>
-                        <td>{{ data[loop.index0].oxidising_gases }}</td>
-                        <td>{{ data[loop.index0].ammonia_gases }}</td>
-                        <td>{{ data[loop.index0].temperature }}</td>
-                        <td>{{ data[loop.index0].humidity }}</td>
-                        <td>{{ data[loop.index0].air_pressure }}</td>
-                        <td>{{ data[loop.index0].lux }}</td>
-                        <td>{{ data[loop.index0].coordinates }}</td>
-                        <td>{{ data[loop.index0].valve }}</td>
-                        <td>{{ data[loop.index0].gauge }}</td>
+                        <th scope="row">{{ row.timestamp }}</th>
+                        <td>{{ row['data'].reducing_gases }}</td>
+                        <td>{{ row['data'].oxidising_gases }}</td>
+                        <td>{{ row['data'].ammonia_gases }}</td>
+                        <td>{{ row['data'].temperature }}</td>
+                        <td>{{ row['data'].humidity }}</td>
+                        <td>{{ row['data'].air_pressure }}</td>
+                        <td>{{ row['data'].lux }}</td>
+                        <td>{% if row['image'].coordinates is not none %}{{ row['image'].coordinates }}{% endif %}</td>
+                        <td>{% if row['image'].valve_status is not none %}{{ row['image'].valve_status }}{% endif %}</td>
+                        <td>{% if row['image'].gauge_reading is not none %}{{ row['image'].gauge_reading }}{% endif %}</td>
                     </tr>
                   {% endfor %}
                   </tbody>
@@ -59,5 +59,4 @@
     </div>
 </section>
 
-<img style="display: none;" src="{{ url_for('main.video_feed') }}">
 {% endblock %}

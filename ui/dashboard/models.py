@@ -15,11 +15,21 @@ class DataModel(db.Model):
     lux = db.Column(db.String, nullable=True)
 
 
+# class ImageModel(db.Model):
+#     __tablename__ = 'images'
+#     id = db.Column(db.Integer, primary_key=True, nullable=False)
+#     timestamp = db.Column(db.DateTime, nullable=False)
+#     image_path = db.Column(db.String, nullable=True)
+
+
 class ImageModel(db.Model):
     __tablename__ = 'images'
     id = db.Column(db.Integer, primary_key=True, nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False)
     image_path = db.Column(db.String, nullable=True)
+    coordinates = db.Column(db.String, nullable=True)
+    valve_status = db.Column(db.String, nullable=True)
+    gauge_reading = db.Column(db.String, nullable=True)
 
 
 class MeasurementChart(BaseChart):
