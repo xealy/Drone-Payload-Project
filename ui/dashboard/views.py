@@ -5,7 +5,6 @@ from . import db
 from sqlalchemy import inspect, desc, asc, and_
 from datetime import datetime, date
 import requests
-# from .forms import TimeRangeForm
 
 # Camera imports
 import cv2
@@ -98,26 +97,57 @@ detectionNetwork.out.link(nnOut.input)
 
 # *** Connect to device
 device = dai.Device(pipeline)
+# *** Global variable for Image Stream
+lastSavedTime = time.monotonic() # ALEX ADDED THIS
 # END OF TAIP CONFIG
 
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
+    def make_chart(data):
+        # Create a new instance of MeasurementChart
+        NewChart = MeasurementChart()
+        NewChart.data.label = "Air Quality"
+
+        # Initialize arrays for labels and data values
+        labels_array = []
+        nh3_values_array = []
+        ox_values_array = []
+        red_values_array = []
+
+        # Populate arrays with data from the records
+        for record in data:
+            labels_array.append(record.timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
+            red_values_array.append(record.reducing_gases)
+            ox_values_array.append(record.oxidising_gases)
+            nh3_values_array.append(record.ammonia_gases)
+
+        # Set labels and data for the chart
+        NewChart.set_labels(labels_array)
+        NewChart.set_data('Ammonia', nh3_values_array)
+        NewChart.set_data('OX', ox_values_array)
+        NewChart.set_data('RED', red_values_array)
+
+        # Get the JSON representation of the chart
+        ChartJSON = NewChart.get()
+
+        return ChartJSON
+
     if request.method == 'POST':
         print("we got a post request :))")
-        data = request.get_json()
-        if data:
-            print(f"Received data: {data}")
+        json_data = request.get_json()
+        if json_data:
+            print(f"Received data: {json_data}")
 
         # Extract data from the request
-        timestamp = datetime.strptime(data['timestamp'], '%d/%m/%Y %H:%M:%S')
-        reducing_gases = data['reducing_gases']
-        oxidising_gases = data['oxidising_gases']
-        ammonia_gases = data['nh3_gases']
-        temperature = data['temperature']
-        humidity = data['humidity']
-        air_pressure = data['pressure']
-        lux = data['light']
+        timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
+        reducing_gases = json_data['reducing_gases']
+        oxidising_gases = json_data['oxidising_gases']
+        ammonia_gases = json_data['nh3_gases']
+        temperature = json_data['temperature']
+        humidity = json_data['humidity']
+        air_pressure = json_data['pressure']
+        lux = json_data['light']
 
         # Create a new DataModel instance
         new_record = DataModel(
@@ -139,33 +169,11 @@ def index():
         except Exception as e:
             db.session.rollback()
             print("An error occurred")
-        
-        # Redirect to the same route to trigger a GET request
-        return redirect(url_for('main.index'))
 
     latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
     data = db.session.query(DataModel)
 
-    NewChart = MeasurementChart()
-    NewChart.data.label = "Air Quality"
-
-    labels_array = []
-    nh3_values_array = []
-    ox_values_array = []
-    red_values_array = []
-
-    for record in data:
-        labels_array.append(record.timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
-        red_values_array.append(record.reducing_gases)
-        ox_values_array.append(record.oxidising_gases)
-        nh3_values_array.append(record.ammonia_gases)
-
-    NewChart.set_labels(labels_array)
-    NewChart.set_data('Ammonia', nh3_values_array)
-    NewChart.set_data('OX', ox_values_array)
-    NewChart.set_data('RED', red_values_array)
-
-    ChartJSON = NewChart.get()
+    ChartJSON = make_chart(data)
 
     return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
 
@@ -215,7 +223,7 @@ def get_frame():
     frame = None
     detections = []
     startTime = time.monotonic()
-    lastSavedTime = startTime # ALEX ADDED THIS
+    global lastSavedTime
     counter = 0
     color2 = (255, 255, 255)
 
@@ -368,7 +376,6 @@ def system_logs():
             'image': images_dict.get(timestamp)
         }
         merged_results.append(merged_entry)
-
 
     return render_template('system_logs.html', data=merged_results)
 
