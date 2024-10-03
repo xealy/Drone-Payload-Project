@@ -2,8 +2,8 @@ import os
 from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for, make_response, current_app
 from .models import DataModel, ImageModel, MeasurementChart
 from . import db
-from sqlalchemy import inspect, desc, asc
-from datetime import datetime
+from sqlalchemy import inspect, desc, asc, and_
+from datetime import datetime, date
 import requests
 # from .forms import TimeRangeForm
 
@@ -287,6 +287,45 @@ def target_detection():
 
 @bp.route('/data_logs', methods=['GET', 'POST'])
 def data_logs():
+    if request.method == 'POST':
+        print("we got a post request :))")
+
+        reference_date = date.today()
+        
+        # Get the time strings from the form
+        from_time_str = request.form.get('from_time')
+        to_time_str = request.form.get('to_time')
+        
+        # Convert time strings to time objects
+        from_time = datetime.strptime(from_time_str, '%I:%M %p').time()
+        to_time = datetime.strptime(to_time_str, '%I:%M %p').time()
+        
+        # Combine date and time into datetime objects
+        from_datetime = datetime.combine(reference_date, from_time)
+        to_datetime = datetime.combine(reference_date, to_time)
+
+        data = db.session.query(DataModel).filter(and_(DataModel.timestamp >= from_datetime, DataModel.timestamp <= to_datetime)).all()
+        images = db.session.query(ImageModel).filter(and_(ImageModel.timestamp >= from_datetime, ImageModel.timestamp <= to_datetime)).all()
+
+        # convert results to dictionary with timestamp as the key
+        data_dict = {item.timestamp: item for item in data}
+        images_dict = {item.timestamp: item for item in images}
+
+        # create list to store merged results
+        merged_results = []
+
+        # merge data based on timestamp
+        for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
+            merged_entry = {
+                'timestamp': timestamp,
+                'data': data_dict.get(timestamp),
+                'image': images_dict.get(timestamp)
+            }
+            merged_results.append(merged_entry)
+
+        return render_template('data_logs.html', data=merged_results)
+
+    # Filter records based on the time frame
     data = db.session.query(DataModel).all()
     images = db.session.query(ImageModel).all()
 
@@ -305,7 +344,6 @@ def data_logs():
             'image': images_dict.get(timestamp)
         }
         merged_results.append(merged_entry)
-
 
     return render_template('data_logs.html', data=merged_results)
 
@@ -331,8 +369,6 @@ def system_logs():
         }
         merged_results.append(merged_entry)
 
-    print(merged_results[0])
-    print(merged_results[0]['image'].valve_status)
 
     return render_template('system_logs.html', data=merged_results)
 

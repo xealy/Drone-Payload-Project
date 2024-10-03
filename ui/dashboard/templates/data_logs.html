@@ -17,42 +17,38 @@
 
                 <p class="font-italic pt-2">Selected Desired Time Range:</p>
 
-                <form>
-                  <div class="form-row">
-                    <div class="form-group col-md-6">
-                        <div class="input-group date" id="datetimepicker1" data-target-input="nearest">
-                            <label for="datetimepicker1" class="mr-2">From:  </label>
-                            <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker1"/>
-                            <div class="input-group-append" data-target="#datetimepicker1" data-toggle="datetimepicker">
-                                <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                <!-- Time Picker HERE -->
+                <form action="/data_logs" method="POST">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <div class="input-group date" id="datetimepicker1" data-target-input="nearest">
+                                <label for="datetimepicker1" class="mr-2">From: </label>
+                                <input type="text" name="from_time" class="form-control datetimepicker-input" data-target="#datetimepicker1"/>
+                                <div class="input-group-append" data-target="#datetimepicker1" data-toggle="datetimepicker">
+                                    <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                
+                        <div class="form-group col-md-6">
+                            <div class="input-group date" id="datetimepicker2" data-target-input="nearest">
+                                <label for="datetimepicker2" class="mr-2">To: </label>
+                                <input type="text" name="to_time" class="form-control datetimepicker-input" data-target="#datetimepicker2"/>
+                                <div class="input-group-append" data-target="#datetimepicker2" data-toggle="datetimepicker">
+                                    <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="form-group col-md-6">
-                        <div class="input-group date" id="datetimepicker2" data-target-input="nearest">
-                            <label for="datetimepicker2" class="mr-2">To:  </label>
-                            <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker2"/>
-                            <div class="input-group-append" data-target="#datetimepicker2" data-toggle="datetimepicker">
-                                <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
-                            </div>
-                        </div>
-                    </div>
-                  </div>
-
-                  <button type="submit" class="btn btn-primary">Update</button>
+                
+                    <button type="submit" class="btn btn-primary">Update</button>
                 </form>
-
+                
                 <script type="text/javascript">
                     $(function () {
                         $('#datetimepicker1').datetimepicker({
                             format: 'LT'
                         });
-                    });
-                </script>
-
-                <script type="text/javascript">
-                    $(function () {
                         $('#datetimepicker2').datetimepicker({
                             format: 'LT'
                         });
