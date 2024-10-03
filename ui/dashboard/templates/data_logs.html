@@ -2,7 +2,6 @@
 
 {% block head %}
 <link rel="stylesheet" href="/static/css/index.css?nocache={timestamp}" type="text/css">
-<!--<link rel="stylesheet" href="/static/css/index.css">-->
 {% endblock %}
 
 {% block content %}
@@ -17,42 +16,38 @@
 
                 <p class="font-italic pt-2">Selected Desired Time Range:</p>
 
-                <form>
-                  <div class="form-row">
-                    <div class="form-group col-md-6">
-                        <div class="input-group date" id="datetimepicker1" data-target-input="nearest">
-                            <label for="datetimepicker1" class="mr-2">From:  </label>
-                            <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker1"/>
-                            <div class="input-group-append" data-target="#datetimepicker1" data-toggle="datetimepicker">
-                                <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                <!-- Time Picker HERE -->
+                <form action="/data_logs" method="POST">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <div class="input-group date" id="datetimepicker1" data-target-input="nearest">
+                                <label for="datetimepicker1" class="mr-2">From: </label>
+                                <input type="text" name="from_time" class="form-control datetimepicker-input" data-target="#datetimepicker1"/>
+                                <div class="input-group-append" data-target="#datetimepicker1" data-toggle="datetimepicker">
+                                    <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                
+                        <div class="form-group col-md-6">
+                            <div class="input-group date" id="datetimepicker2" data-target-input="nearest">
+                                <label for="datetimepicker2" class="mr-2">To: </label>
+                                <input type="text" name="to_time" class="form-control datetimepicker-input" data-target="#datetimepicker2"/>
+                                <div class="input-group-append" data-target="#datetimepicker2" data-toggle="datetimepicker">
+                                    <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="form-group col-md-6">
-                        <div class="input-group date" id="datetimepicker2" data-target-input="nearest">
-                            <label for="datetimepicker2" class="mr-2">To:  </label>
-                            <input type="text" class="form-control datetimepicker-input" data-target="#datetimepicker2"/>
-                            <div class="input-group-append" data-target="#datetimepicker2" data-toggle="datetimepicker">
-                                <div class="input-group-text"><i class="fa fa-clock-o"></i></div>
-                            </div>
-                        </div>
-                    </div>
-                  </div>
-
-                  <button type="submit" class="btn btn-primary">Update</button>
+                
+                    <button type="submit" class="btn btn-primary">Update</button>
                 </form>
-
+                
                 <script type="text/javascript">
                     $(function () {
                         $('#datetimepicker1').datetimepicker({
                             format: 'LT'
                         });
-                    });
-                </script>
-
-                <script type="text/javascript">
-                    $(function () {
                         $('#datetimepicker2').datetimepicker({
                             format: 'LT'
                         });
@@ -81,21 +76,21 @@
                     </tr>
                   </thead>
                   <tbody>
-                  {% for row in data %}
+                    {% for row in data %}
                     <tr>
-                        <th scope="row">{{ data[loop.index0].timestamp }}</th>
-                        <td>{{ data[loop.index0].reducing_gases }}</td>
-                        <td>{{ data[loop.index0].oxidising_gases }}</td>
-                        <td>{{ data[loop.index0].ammonia_gases }}</td>
-                        <td>{{ data[loop.index0].temperature }}</td>
-                        <td>{{ data[loop.index0].humidity }}</td>
-                        <td>{{ data[loop.index0].air_pressure }}</td>
-                        <td>{{ data[loop.index0].lux }}</td>
-                        <td>{{ data[loop.index0].coordinates }}</td>
-                        <td>{{ data[loop.index0].valve }}</td>
-                        <td>{{ data[loop.index0].gauge }}</td>
+                        <th scope="row">{{ row.timestamp }}</th>
+                        <td>{{ row['data'].reducing_gases }}</td>
+                        <td>{{ row['data'].oxidising_gases }}</td>
+                        <td>{{ row['data'].ammonia_gases }}</td>
+                        <td>{{ row['data'].temperature }}</td>
+                        <td>{{ row['data'].humidity }}</td>
+                        <td>{{ row['data'].air_pressure }}</td>
+                        <td>{{ row['data'].lux }}</td>
+                        <td>{% if row['image'].coordinates is not none %}{{ row['image'].coordinates }}{% endif %}</td>
+                        <td>{% if row['image'].valve_status is not none %}{{ row['image'].valve_status }}{% endif %}</td>
+                        <td>{% if row['image'].gauge_reading is not none %}{{ row['image'].gauge_reading }}{% endif %}</td>
                     </tr>
-                  {% endfor %}
+                    {% endfor %}
                   </tbody>
                 </table>
             </div>

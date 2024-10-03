@@ -2,10 +2,9 @@ import os
 from flask import Blueprint, send_from_directory, render_template, Response, request, redirect, jsonify, url_for, make_response, current_app
 from .models import DataModel, ImageModel, MeasurementChart
 from . import db
-from sqlalchemy import inspect, desc, asc
-from datetime import datetime
+from sqlalchemy import inspect, desc, asc, and_
+from datetime import datetime, date
 import requests
-# from .forms import TimeRangeForm
 
 # Camera imports
 import cv2
@@ -19,6 +18,7 @@ import numpy as np
 import argparse
 import json
 import blobconverter
+import base64
 
 
 bp = Blueprint('main', __name__)
@@ -98,26 +98,57 @@ detectionNetwork.out.link(nnOut.input)
 
 # *** Connect to device
 device = dai.Device(pipeline)
+# *** Global variable for Image Stream
+lastSavedTime = time.monotonic() # ALEX ADDED THIS
 # END OF TAIP CONFIG
 
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
+    def make_chart(data):
+        # Create a new instance of MeasurementChart
+        NewChart = MeasurementChart()
+        NewChart.data.label = "Air Quality"
+
+        # Initialize arrays for labels and data values
+        labels_array = []
+        nh3_values_array = []
+        ox_values_array = []
+        red_values_array = []
+
+        # Populate arrays with data from the records
+        for record in data:
+            labels_array.append(record.timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
+            red_values_array.append(record.reducing_gases)
+            ox_values_array.append(record.oxidising_gases)
+            nh3_values_array.append(record.ammonia_gases)
+
+        # Set labels and data for the chart
+        NewChart.set_labels(labels_array)
+        NewChart.set_data('Ammonia', nh3_values_array)
+        NewChart.set_data('OX', ox_values_array)
+        NewChart.set_data('RED', red_values_array)
+
+        # Get the JSON representation of the chart
+        ChartJSON = NewChart.get()
+
+        return ChartJSON
+
     if request.method == 'POST':
         print("we got a post request :))")
-        data = request.get_json()
-        if data:
-            print(f"Received data: {data}")
+        json_data = request.get_json()
+        if json_data:
+            print(f"Received data: {json_data}")
 
         # Extract data from the request
-        timestamp = datetime.strptime(data['timestamp'], '%d/%m/%Y %H:%M:%S')
-        reducing_gases = data['reducing_gases']
-        oxidising_gases = data['oxidising_gases']
-        ammonia_gases = data['nh3_gases']
-        temperature = data['temperature']
-        humidity = data['humidity']
-        air_pressure = data['pressure']
-        lux = data['light']
+        timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
+        reducing_gases = json_data['reducing_gases']
+        oxidising_gases = json_data['oxidising_gases']
+        ammonia_gases = json_data['nh3_gases']
+        temperature = json_data['temperature']
+        humidity = json_data['humidity']
+        air_pressure = json_data['pressure']
+        lux = json_data['light']
 
         # Create a new DataModel instance
         new_record = DataModel(
@@ -139,33 +170,11 @@ def index():
         except Exception as e:
             db.session.rollback()
             print("An error occurred")
-        
-        # Redirect to the same route to trigger a GET request
-        return redirect(url_for('main.index'))
 
     latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
     data = db.session.query(DataModel)
 
-    NewChart = MeasurementChart()
-    NewChart.data.label = "Air Quality"
-
-    labels_array = []
-    nh3_values_array = []
-    ox_values_array = []
-    red_values_array = []
-
-    for record in data:
-        labels_array.append(record.timestamp.strftime("%m/%d/%Y, %H:%M:%S"))
-        red_values_array.append(record.reducing_gases)
-        ox_values_array.append(record.oxidising_gases)
-        nh3_values_array.append(record.ammonia_gases)
-
-    NewChart.set_labels(labels_array)
-    NewChart.set_data('Ammonia', nh3_values_array)
-    NewChart.set_data('OX', ox_values_array)
-    NewChart.set_data('RED', red_values_array)
-
-    ChartJSON = NewChart.get()
+    ChartJSON = make_chart(data)
 
     return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
 
@@ -177,16 +186,19 @@ def target_detection():
         json_data = request.get_json()
 
         # if json_data:
-        #     print(f"Received data: {json_data['timestamp']}")
+        #     print(f"Received data: {json_data['image_bytestring_encoded']}")
 
         # Extract data from JSON object
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
         image_path = json_data['image_path']
+        image_bytestring = json_data['image_bytestring_encoded']
+        # image_bytestring = base64.b64decode(image_bytestring_encoded)
 
         # Create a new ImageModel instance
         new_record = ImageModel(
             timestamp=timestamp,
-            image_path=image_path
+            image_path=image_path,
+            image_bytestring=image_bytestring
         )
 
         # Add the record to the session and commit
@@ -215,7 +227,7 @@ def get_frame():
     frame = None
     detections = []
     startTime = time.monotonic()
-    lastSavedTime = startTime # ALEX ADDED THIS
+    global lastSavedTime
     counter = 0
     color2 = (255, 255, 255)
 
@@ -250,30 +262,33 @@ def get_frame():
             displayFrame("rgb", frame, detections)
             _, jpeg = cv2.imencode('.jpg', frame)
 
-            # ALEX ADDED THIS: save image every 2 seconds (for image stream)
+            # ALEX ADDED THIS: save image every 4 seconds (for image stream)
             currentTime = time.monotonic()
-            if currentTime - lastSavedTime >= 2:
+            if currentTime - lastSavedTime >= 4:
                 current_datetime = datetime.now()
                 currentDatetimeFile = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
 
                 current_datetime_string = current_datetime.strftime("%d/%m/%Y %H:%M:%S") # for db record
                 new_image_to_serve = f'image_stream/{currentDatetimeFile}.jpg' # for db record
+                frame_bytestring = jpeg.tobytes() # for db record
+                frame_bytestring_encoded = base64.b64encode(frame_bytestring).decode('utf-8')
 
                 new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
-                cv2.imwrite(new_image, frame)
+                # cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
 
                 # SEND POST REQUEST to 'target_detection' endpoint
                 data = {
                     "timestamp": current_datetime_string,
-                    "image_path": new_image_to_serve
+                    "image_path": new_image_to_serve,
+                    "image_bytestring_encoded": frame_bytestring_encoded
                 }
                 response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
                 if response.status_code == 200:
                     print("Data posted successfully.")
                 else:
                     print(f"Failed to post data. Status code: {response.status_code}")
-
+                
             frame_with_bbox = jpeg.tobytes()
 
             yield (b'--frame\r\n'
@@ -287,40 +302,98 @@ def video_feed():
 
 @bp.route('/data_logs', methods=['GET', 'POST'])
 def data_logs():
-    data = db.session.query(DataModel)
+    if request.method == 'POST':
+        print("we got a post request :))")
 
-    # data_selection = request.args.get('id') # to get url query params
+        reference_date = date.today()
+        
+        # Get the time strings from the form
+        from_time_str = request.form.get('from_time')
+        to_time_str = request.form.get('to_time')
+        
+        # Convert time strings to time objects
+        from_time = datetime.strptime(from_time_str, '%I:%M %p').time()
+        to_time = datetime.strptime(to_time_str, '%I:%M %p').time()
+        
+        # Combine date and time into datetime objects
+        from_datetime = datetime.combine(reference_date, from_time)
+        to_datetime = datetime.combine(reference_date, to_time)
 
-    # EXAMPLE FORM
-    # categoryForm = DropdownForm()
-    # selection = categoryForm.category.data
-    # if selection == "All Categories":
-    #     models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # else:
-    #     models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
-    # return render_template('data_logs.html', data=data, form=categoryForm)
+        data = db.session.query(DataModel).filter(and_(DataModel.timestamp >= from_datetime, DataModel.timestamp <= to_datetime)).all()
+        images = db.session.query(ImageModel).filter(and_(ImageModel.timestamp >= from_datetime, ImageModel.timestamp <= to_datetime)).all()
 
-    # form = TimeRangeForm()
-    # if form.validate_on_submit():
-    #     from_time = form.from_time.data
-    #     to_time = form.to_time.data
-    #     # Process the form data as needed
-    #     # ~~~
+        # convert results to dictionary with timestamp as the key
+        data_dict = {item.timestamp: item for item in data}
+        images_dict = {item.timestamp: item for item in images}
 
-    return render_template('data_logs.html', data=data)
+        # create list to store merged results
+        merged_results = []
+
+        # merge data based on timestamp
+        for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
+            merged_entry = {
+                'timestamp': timestamp,
+                'data': data_dict.get(timestamp),
+                'image': images_dict.get(timestamp)
+            }
+            merged_results.append(merged_entry)
+
+        return render_template('data_logs.html', data=merged_results)
+
+    # Filter records based on the time frame
+    data = db.session.query(DataModel).all()
+    images = db.session.query(ImageModel).all()
+
+    # convert results to dictionary with timestamp as the key
+    data_dict = {item.timestamp: item for item in data}
+    images_dict = {item.timestamp: item for item in images}
+
+    # create list to store merged results
+    merged_results = []
+
+    # merge data based on timestamp
+    for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
+        merged_entry = {
+            'timestamp': timestamp,
+            'data': data_dict.get(timestamp),
+            'image': images_dict.get(timestamp)
+        }
+        merged_results.append(merged_entry)
+
+    return render_template('data_logs.html', data=merged_results)
 
 
 @bp.route('/system_logs', methods=['GET', 'POST'])
 def system_logs():
-    data = db.session.query(DataModel)
+    data = db.session.query(DataModel).all()
+    images = db.session.query(ImageModel).all()
 
-    # models = db.session.query(MLModel).order_by(asc(MLModel.category))
-    # models = db.session.query(MLModel).filter(MLModel.category == categoryForm.category.data).order_by(asc(MLModel.category))
+    # convert results to dictionary with timestamp as the key
+    data_dict = {item.timestamp: item for item in data}
+    images_dict = {item.timestamp: item for item in images}
 
-    return render_template('system_logs.html', data=data)
+    # create list to store merged results
+    merged_results = []
+
+    # merge data based on timestamp
+    for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
+        merged_entry = {
+            'timestamp': timestamp,
+            'data': data_dict.get(timestamp),
+            'image': images_dict.get(timestamp)
+        }
+        merged_results.append(merged_entry)
+
+    return render_template('system_logs.html', data=merged_results)
 
 
 @bp.route('/static/<path:path>')
 def send_js(path):
     return send_from_directory('static', path)
 
+
+# @bp.route('/static/<path:filename>')
+# def serve_static(filename):
+#     response = make_response(send_from_directory('static', filename))
+#     response.headers['Cache-Control'] = 'public, max-age=31536000'  # Cache for one year
+#     return response
