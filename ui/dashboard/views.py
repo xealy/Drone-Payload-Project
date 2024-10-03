@@ -211,13 +211,31 @@ def calculate_angle(base_point, tip_point):
     delta_y = tip_point[1] - base_point[1]
     delta_x = tip_point[0] - base_point[0]
     angle = math.degrees(math.atan2(delta_y, delta_x))
+    angle = round(angle)
+
+    # Changes negative theta to appropriate value
+    if angle < 0:
+        angle *= -1
+        angle = (180 - angle) + 180
+
+    # Sets new starting point
+    angle = angle - 90
+
+    # Changes negative theta to appropriate value
+    if angle < 0:
+        angle *= -1
+        angle = angle + 270
+
+    # theta of 74 is 500 psi and theta of 173 is 2,000 psi
+    if angle <= 74 or angle >= 173:
+        print("3rd if statement")
+
     return angle
 
-def map_angle_to_pressure(angle, min_angle, max_angle, min_pressure, max_pressure):
+def map_angle_to_pressure(angle):
     # Linearly map the angle to the pressure range
-    angle_range = max_angle - min_angle
-    pressure_range = max_pressure - min_pressure
-    pressure = ((angle - min_angle) / angle_range) * pressure_range + min_pressure
+    pressure = int((0.1711 * angle) + 11.517)
+    print(angle)
     return pressure
 
 def get_frame():
@@ -264,17 +282,16 @@ def get_frame():
             angle = calculate_angle(base, tip)
 
             # Define the angle and pressure ranges (example values, adjust based on gauge calibration)
-            min_angle = -80  # Example: minimum needle angle
-            max_angle = 80   # Example: maximum needle angle
+            min_angle = -25  # Example: minimum needle angle
+            max_angle = 215   # Example: maximum needle angle
             min_pressure = 0  # Example: minimum pressure
             max_pressure = 145  # Example: maximum pressure
 
             # Map the angle to a pressure reading
-            pressure = map_angle_to_pressure(angle, min_angle, max_angle, min_pressure, max_pressure)
+            pressure = map_angle_to_pressure(angle)
 
             # Display the pressure reading on the frame
-            cv2.putText(frame, f"Pressure: {int(pressure)} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
-            print(f"Pressure: {int(pressure)} PSI")
+            cv2.putText(frame, f"Pressure: {angle} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
 
     while True:
         inRgb = qRgb.get()
