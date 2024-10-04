@@ -269,6 +269,8 @@ def get_frame():
 
     def displayFrame(name, frame, detections):
         color = (255, 0, 0)
+        tip = None
+        base = None
         for detection in detections:
             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
             cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
