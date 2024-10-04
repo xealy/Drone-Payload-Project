@@ -186,19 +186,21 @@ def target_detection():
         print("we got a post request :))")
         json_data = request.get_json()
 
-        # if json_data:
-        #     print(f"Received data: {json_data['image_bytestring_encoded']}")
-
         # Extract data from JSON object
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
         image_path = json_data['image_path']
+        coordinates = json_data['coordinates']
+        valve_status = json_data['valve_status']
+        gauge_reading = json_data['gauge_reading']
         image_bytestring = json_data['image_bytestring_encoded']
-        # image_bytestring = base64.b64decode(image_bytestring_encoded)
 
         # Create a new ImageModel instance
         new_record = ImageModel(
             timestamp=timestamp,
             image_path=image_path,
+            coordinates=coordinates,
+            valve_status=valve_status,
+            gauge_reading=gauge_reading,
             image_bytestring=image_bytestring
         )
 
@@ -214,10 +216,11 @@ def target_detection():
         # Redirect to the same route to trigger a GET request
         return redirect(url_for('main.target_detection'))
 
-    data = db.session.query(DataModel)
     images = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp))
+    latest_image = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp)).first()
 
-    return render_template('target_detection.html', data=data, images=images)
+    return render_template('target_detection.html', images=images, latest_image=latest_image)
+
 
 def calculate_angle(base_point, tip_point):
     # Calculate the angle of the needle using the base and tip coordinates
@@ -244,10 +247,12 @@ def calculate_angle(base_point, tip_point):
 
     return angle
 
+
 def map_angle_to_pressure(angle):
     # Linearly map the angle to the pressure range
     pressure = int((0.51 * angle) - 18.83)
     return pressure
+
 
 def get_frame():
     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
@@ -271,6 +276,8 @@ def get_frame():
         color = (255, 0, 0)
         tip = None
         base = None
+        pressure = None
+        valve_status = None
         for detection in detections:
             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
             cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
@@ -284,6 +291,10 @@ def get_frame():
                 tip = ((bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2)
             elif label == "Base":
                 base = ((bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2)
+            elif label == "BallValve_ON":
+                valve_status = 'Open'
+            elif label == "BallValve_OFF":
+                valve_status = 'Closed'
 
             # If both tip and base are detected, calculate the angle and pressure
             if tip is not None and base is not None:
@@ -298,6 +309,8 @@ def get_frame():
 
                 # Display the pressure reading on the frame
                 cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
+        
+        return [pressure, valve_status]
 
     while True:
         inRgb = qRgb.get()
@@ -313,7 +326,7 @@ def get_frame():
             counter += 1
 
         if frame is not None:
-            displayFrame("rgb", frame, detections)
+            taip_detection_values = displayFrame("rgb", frame, detections)
             _, jpeg = cv2.imencode('.jpg', frame)
 
             # ALEX ADDED THIS: save image every 4 seconds (for image stream)
@@ -335,6 +348,9 @@ def get_frame():
                 data = {
                     "timestamp": current_datetime_string,
                     "image_path": new_image_to_serve,
+                    "coordinates": None,
+                    "valve_status": taip_detection_values[1],
+                    "gauge_reading": taip_detection_values[0],
                     "image_bytestring_encoded": frame_bytestring_encoded
                 }
                 response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
