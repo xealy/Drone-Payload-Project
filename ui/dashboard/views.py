@@ -226,16 +226,14 @@ def calculate_angle(base_point, tip_point):
         angle *= -1
         angle = angle + 270
 
-    # theta of 74 is 500 psi and theta of 173 is 2,000 psi
-    if angle <= 74 or angle >= 173:
-        print("3rd if statement")
+    if angle < 90:
+        print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
 
     return angle
 
 def map_angle_to_pressure(angle):
     # Linearly map the angle to the pressure range
-    pressure = int((0.1711 * angle) + 11.517)
-    print(angle)
+    pressure = int((0.51 * angle) - 18.83)
     return pressure
 
 def get_frame():
@@ -281,17 +279,11 @@ def get_frame():
             # Calculate the angle of the needle
             angle = calculate_angle(base, tip)
 
-            # Define the angle and pressure ranges (example values, adjust based on gauge calibration)
-            min_angle = -25  # Example: minimum needle angle
-            max_angle = 215   # Example: maximum needle angle
-            min_pressure = 0  # Example: minimum pressure
-            max_pressure = 145  # Example: maximum pressure
-
             # Map the angle to a pressure reading
             pressure = map_angle_to_pressure(angle)
 
             # Display the pressure reading on the frame
-            cv2.putText(frame, f"Pressure: {angle} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
 
     while True:
         inRgb = qRgb.get()
