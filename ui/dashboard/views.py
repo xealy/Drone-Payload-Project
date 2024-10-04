@@ -19,6 +19,7 @@ import argparse
 import json
 import blobconverter
 import base64
+import math
 
 
 bp = Blueprint('main', __name__)
@@ -218,6 +219,35 @@ def target_detection():
 
     return render_template('target_detection.html', data=data, images=images)
 
+def calculate_angle(base_point, tip_point):
+    # Calculate the angle of the needle using the base and tip coordinates
+    delta_y = tip_point[1] - base_point[1]
+    delta_x = tip_point[0] - base_point[0]
+    angle = math.degrees(math.atan2(delta_y, delta_x))
+    angle = round(angle)
+
+    # Changes negative theta to appropriate value
+    if angle < 0:
+        angle *= -1
+        angle = (180 - angle) + 180
+
+    # Sets new starting point
+    angle = angle - 90
+
+    # Changes negative theta to appropriate value
+    if angle < 0:
+        angle *= -1
+        angle = angle + 270
+
+    if angle < 90:
+        print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
+
+    return angle
+
+def map_angle_to_pressure(angle):
+    # Linearly map the angle to the pressure range
+    pressure = int((0.51 * angle) - 18.83)
+    return pressure
 
 def get_frame():
     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
@@ -239,11 +269,35 @@ def get_frame():
 
     def displayFrame(name, frame, detections):
         color = (255, 0, 0)
+        tip = None
+        base = None
         for detection in detections:
             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
             cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.putText(frame, f"{int(detection.confidence * 100)}%", (bbox[0] + 10, bbox[1] + 40), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
             cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), color, 2)
+
+            label = labels[detection.label]
+
+            # Gauge Reading
+            if label == "Tip":
+                tip = ((bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2)
+            elif label == "Base":
+                base = ((bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2)
+
+            # If both tip and base are detected, calculate the angle and pressure
+            if tip is not None and base is not None:
+                # Draw lines between tip and base
+                cv2.line(frame, base, tip, (0, 255, 0), 2)
+
+                # Calculate the angle of the needle
+                angle = calculate_angle(base, tip)
+
+                # Map the angle to a pressure reading
+                pressure = map_angle_to_pressure(angle)
+
+                # Display the pressure reading on the frame
+                cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
 
     while True:
         inRgb = qRgb.get()

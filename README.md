@@ -1,7 +1,9 @@
 # EGH455-UAV-Project
 Repository for EGH455 UAV Project
 
-Ensure that in order to run any scripts, activate the 'egh455-merged-env' virtual environment
+IMPORTANT: Ensure that in order to run any scripts, activate the 'egh455-merged-env' virtual environment
+* to activate environment: source egh455-merged-env/bin/activate
+* to deactivate environment: deactivate
 
 ## WEB VIZ
 To run the web viz app, in a separate terminal:
