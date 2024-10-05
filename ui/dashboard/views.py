@@ -20,10 +20,45 @@ import json
 import blobconverter
 import base64
 import math
-
+import cv2.aruco as aruco
 
 bp = Blueprint('main', __name__)
 
+# ArUCO Stuff
+camera_matrix = np.array([[503.45916748, 0.0, 312.87506104],
+                          [0.0, 503.45916748, 243.47634888],
+                          [0.0, 0.0, 1.0]])
+
+distortion_coefficients = np.array([12.180327415466309, 7.460699081420898, 
+                                    -8.580022404203191e-05, -0.0012392610078677535, 
+                                    56.39138412475586, 12.202899932861328, 
+                                    5.382103443145752, 59.72492599487305])
+
+aruco_dict_type = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+
+ARUCO_DICT = {
+	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
+	"DICT_4X4_100": cv2.aruco.DICT_4X4_100,
+	"DICT_4X4_250": cv2.aruco.DICT_4X4_250,
+	"DICT_4X4_1000": cv2.aruco.DICT_4X4_1000,
+	"DICT_5X5_50": cv2.aruco.DICT_5X5_50,
+	"DICT_5X5_100": cv2.aruco.DICT_5X5_100,
+	"DICT_5X5_250": cv2.aruco.DICT_5X5_250,
+	"DICT_5X5_1000": cv2.aruco.DICT_5X5_1000,
+	"DICT_6X6_50": cv2.aruco.DICT_6X6_50,
+	"DICT_6X6_100": cv2.aruco.DICT_6X6_100,
+	"DICT_6X6_250": cv2.aruco.DICT_6X6_250,
+	"DICT_6X6_1000": cv2.aruco.DICT_6X6_1000,
+	"DICT_7X7_50": cv2.aruco.DICT_7X7_50,
+	"DICT_7X7_100": cv2.aruco.DICT_7X7_100,
+	"DICT_7X7_250": cv2.aruco.DICT_7X7_250,
+	"DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
+	"DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL,
+	"DICT_APRILTAG_16h5": cv2.aruco.DICT_APRILTAG_16h5,
+	"DICT_APRILTAG_25h9": cv2.aruco.DICT_APRILTAG_25h9,
+	"DICT_APRILTAG_36h10": cv2.aruco.DICT_APRILTAG_36h10,
+	"DICT_APRILTAG_36h11": cv2.aruco.DICT_APRILTAG_36h11
+}
 
 # START OF TAIP CONFIG
 # Parse config
@@ -221,6 +256,27 @@ def target_detection():
 
     return render_template('target_detection.html', images=images, latest_image=latest_image)
 
+def pose_estimation(frame, corners, ids, aruco_dict_type, matrix_coefficients, distortion_coefficients):
+
+    '''
+    frame - Frame from the video stream
+    matrix_coefficients - Intrinsic matrix of the calibrated camera
+    distortion_coefficients - Distortion coefficients associated with your camera
+
+    return:-
+    frame - The frame with the axis drawn on it
+    '''
+
+    # If markers are detected
+    for i in range(0, len(ids)):
+        # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
+        rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients,
+                                                                       distortion_coefficients)
+        # Draw Axis
+        cv2.aruco.drawAxis(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
+        cv2.putText(frame, str(tvec), (100, 200 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) 
+
+    return frame
 
 def calculate_angle(base_point, tip_point):
     # Calculate the angle of the needle using the base and tip coordinates
