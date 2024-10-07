@@ -34,7 +34,8 @@ distortion_coefficients = np.array([12.180327415466309, 7.460699081420898,
                                     56.39138412475586, 12.202899932861328, 
                                     5.382103443145752, 59.72492599487305])
 
-aruco_dict_type = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+aruco_dict = cv2.aruco.Dictionary(cv2.aruco.DICT_6X6_250, 6)   # Choose the appropriate dictionary
+aruco_params = cv2.aruco.DetectorParameters()
 
 ARUCO_DICT = {
 	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
@@ -256,24 +257,14 @@ def target_detection():
 
     return render_template('target_detection.html', images=images, latest_image=latest_image)
 
-def pose_estimation(frame, corners, ids, aruco_dict_type, matrix_coefficients, distortion_coefficients):
+def pose_estimation(frame, corners, ids, aruco_dict_type, arucoParams, matrix_coefficients, distortion_coefficients):
 
-    '''
-    frame - Frame from the video stream
-    matrix_coefficients - Intrinsic matrix of the calibrated camera
-    distortion_coefficients - Distortion coefficients associated with your camera
-
-    return:-
-    frame - The frame with the axis drawn on it
-    '''
-
-    # If markers are detected
     for i in range(0, len(ids)):
         # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
         rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients,
                                                                        distortion_coefficients)
         # Draw Axis
-        cv2.aruco.drawAxis(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
+        cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
         cv2.putText(frame, str(tvec), (100, 200 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) 
 
     return frame
@@ -309,6 +300,33 @@ def map_angle_to_pressure(angle):
     pressure = int((0.51 * angle) - 18.83)
     return pressure
 
+def detect_aruco(frame):
+    (corners, ids, rejectedImgPoints) = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
+    if len(corners) > 0:
+        ids = ids.flatten()
+        corners_pos = corners
+        for (markerCorner, markerID) in zip(corners, ids):
+
+            corners = markerCorner.reshape((4, 2))
+            (topLeft, topRight, bottomRight, bottomLeft) = corners
+
+            topRight = (int(topRight[0]), int(topRight[1]))
+            bottomRight = (int(bottomRight[0]), int(bottomRight[1]))
+            bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
+            topLeft = (int(topLeft[0]), int(topLeft[1]))
+   
+            cv2.line(frame, topLeft, topRight, (0, 255, 0), 2)
+            cv2.line(frame, topRight, bottomRight, (0, 255, 0), 2)
+            cv2.line(frame, bottomRight, bottomLeft, (0, 255, 0), 2)
+            cv2.line(frame, bottomLeft, topLeft, (0, 255, 0), 2)
+
+            cX = int((topLeft[0] + bottomRight[0]) / 2.0)
+            cY = int((topLeft[1] + bottomRight[1]) / 2.0)
+            cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
+ 
+            cv2.putText(frame, str(markerID),(topLeft[0], topLeft[1] - 15),cv2.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0), 2)
+
+        frame = pose_estimation(frame, corners_pos, ids, aruco_dict, aruco_params, camera_matrix, distortion_coefficients)
 
 def get_frame():
     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
@@ -332,6 +350,7 @@ def get_frame():
         color = (255, 0, 0)
         tip = None
         base = None
+        arucoDetection = None
         pressure = None
         valve_status = None
         for detection in detections:
@@ -351,6 +370,8 @@ def get_frame():
                 valve_status = 'Open'
             elif label == "BallValve_OFF":
                 valve_status = 'Closed'
+            elif label == "ArUCO":
+                arucoDetection = label
 
             # If both tip and base are detected, calculate the angle and pressure
             if tip is not None and base is not None:
@@ -365,7 +386,10 @@ def get_frame():
 
                 # Display the pressure reading on the frame
                 cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
-        
+
+            if arucoDetection is not None:
+                detect_aruco(frame)
+                        
         return [pressure, valve_status]
 
     while True:
