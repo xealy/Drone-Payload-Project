@@ -138,6 +138,7 @@ def index():
     if request.method == 'POST':
         print("we got a post request :))")
         json_data = request.get_json()
+
         if json_data:
             print(f"Received data: {json_data}")
 
@@ -214,12 +215,17 @@ def target_detection():
             print("An error occurred")
         
         # Redirect to the same route to trigger a GET request
-        return redirect(url_for('main.target_detection'))
+        # return redirect(url_for('main.target_detection'))
 
     images = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp))
-    latest_image = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp)).first()
 
-    return render_template('target_detection.html', images=images, latest_image=latest_image)
+    # Display latest detections from each category
+    latest_valve_status = db.session.query(ImageModel).filter(ImageModel.valve_status.isnot(None)).order_by(desc(ImageModel.timestamp)).first()
+    latest_coordinates = db.session.query(ImageModel).filter(ImageModel.coordinates.isnot(None)).order_by(desc(ImageModel.timestamp)).first()
+    latest_gauge_reading = db.session.query(ImageModel).filter(ImageModel.gauge_reading.isnot(None)).order_by(desc(ImageModel.timestamp)).first()
+
+    return render_template('target_detection.html', images=images, latest_valve_status=latest_valve_status, 
+                           latest_coordinates=latest_coordinates, latest_gauge_reading=latest_gauge_reading)
 
 
 def calculate_angle(base_point, tip_point):
