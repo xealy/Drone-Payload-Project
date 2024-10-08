@@ -48,18 +48,18 @@
                           <tbody>
                             <tr>
                               <th scope="row">Ball Valve</th>
-                              <td>{% if latest_image.valve_status is not none %}{{ latest_image.timestamp }}{% endif %}</td>
-                              <td>{% if latest_image.valve_status is not none %}{{ latest_image.valve_status }}{% endif %}</td>
+                              <td>{% if latest_valve_status is not none %}{{ latest_valve_status.timestamp }}{% else %}-{% endif %}</td>
+                              <td>{% if latest_valve_status is not none %}{{ latest_valve_status.valve_status }}{% else %}-{% endif %}</td>
                             </tr>
                             <tr>
                               <th scope="row">ArUco Marker</th>
-                              <td>{% if latest_image.coordinates is not none %}{{ latest_image.timestamp }}{% endif %}</td>
-                              <td>{% if latest_image.coordinates is not none %}{{ latest_image.coordinates }}{% endif %}</td>
+                              <td>{% if latest_coordinates is not none %}{{ latest_coordinates.timestamp }}{% else %}-{% endif %}</td>
+                              <td>{% if latest_coordinates is not none %}{{ latest_coordinates.coordinates }}{% else %}-{% endif %}</td>
                             </tr>
                             <tr>
                               <th scope="row">Air Pressure Gauge</th>
-                              <td>{% if latest_image.gauge_reading is not none %}{{ latest_image.timestamp }}{% endif %}</td>
-                              <td>{% if latest_image.gauge_reading is not none %}{{ latest_image.gauge_reading }}{% endif %}</td>
+                              <td>{% if latest_gauge_reading is not none %}{{ latest_gauge_reading.timestamp }}{% else %}-{% endif %}</td>
+                              <td>{% if latest_gauge_reading is not none %}{{ latest_gauge_reading.gauge_reading }}{% else %}-{% endif %}</td>
                             </tr>
                           </tbody>
                         </table>
