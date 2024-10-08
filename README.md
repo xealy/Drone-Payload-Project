@@ -14,6 +14,15 @@ OR
 * set FLASK_APP=main.py (if you use Windows -> you may also need to run $env:FLASK_APP="main.py")
 * flask run --host=0.0.0.0
 
+To run web viz app with WSGI (this is not working):
+* first navigate to the directory that contains 'uwsgi.ini'
+* uwsgi --ini uwsgi.ini
+
+If WSGI gets stuck:
+* check what is using port 5000: sudo lsof -i :5000
+* sudo kill PID
+
+
 ## AIR QUALITY
 To run the air quality sensing script, find and run the 'new-aq-reading.py' file in the Repo in a separate terminal. This will start taking air quality readings and send the data as POST requests to the Flask App (make sure Flask App is running too).
 
