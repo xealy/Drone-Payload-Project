@@ -16,7 +16,7 @@ def create_app():
     db.init_app(app)
 
     # importing views module -> practice to prevent circular references
-    from . import views
-    app.register_blueprint(views.bp)
+    # from . import views
+    # app.register_blueprint(views.bp)
 
     return app
