@@ -5,20 +5,17 @@ import numpy as np
 import sys
 from pathlib import Path
 
-# Connect Device
+# Camera A is the RGB Camera which is being used
+# This code obtains the intrinsics defaults since resolution isn't set
+# It also obtains the distortion coefficient values
 with dai.Device() as device:
-    calibFile = str((Path(__file__).parent / Path(f"calib_{device.getMxId()}.json")).resolve().absolute())
-    if len(sys.argv) > 1:
-        calibFile = sys.argv[1]
-
-    # Read calibration data
     calibData = device.readCalibration()
-    calibData.eepromToJsonFile(calibFile)
 
-    # Get intrinsic values for 640x480 resolution
-    M_rgb = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.CAM_A, 640, 480))
-    print("RGB Camera resized intrinsics for 640 x 480:")
-    print(M_rgb)
+    M_rgb, width, height = calibData.getDefaultIntrinsics(dai.CameraBoardSocket.CAM_A)
+
+    print("RGB Camera Default Intrinsics (Camera A):")
+    print(np.array(M_rgb))
+    print(f"Resolution: {width} x {height}")
 
     # Print the distortion coefficients if required
     D_rgb = np.array(calibData.getDistortionCoefficients(dai.CameraBoardSocket.CAM_A))

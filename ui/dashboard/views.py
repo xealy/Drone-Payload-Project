@@ -24,17 +24,16 @@ import cv2.aruco as aruco
 
 bp = Blueprint('main', __name__)
 
-# ArUCO Stuff
-camera_matrix = np.array([[503.45916748, 0.0, 312.87506104],
-                          [0.0, 503.45916748, 243.47634888],
-                          [0.0, 0.0, 1.0]])
+# Camera specs obtained from calibration_reader.py
+camera_matrix = np.array([[3.02075488e+03, 0.00000000e+00, 1.87725024e+03],
+ [0.00000000e+00, 3.02075488e+03, 1.10085803e+03],
+ [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
 
-distortion_coefficients = np.array([12.180327415466309, 7.460699081420898, 
-                                    -8.580022404203191e-05, -0.0012392610078677535, 
-                                    56.39138412475586, 12.202899932861328, 
-                                    5.382103443145752, 59.72492599487305])
+distortion_coefficients = np.array([12.180327415466309, 7.460699081420898,
+-8.580022404203191e-05, -0.0012392610078677535,
+56.39138412475586])
 
-aruco_dict = cv2.aruco.Dictionary(cv2.aruco.DICT_6X6_250, 6)   # Choose the appropriate dictionary
+aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
 aruco_params = cv2.aruco.DetectorParameters()
 
 ARUCO_DICT = {
@@ -257,7 +256,7 @@ def target_detection():
 
     return render_template('target_detection.html', images=images, latest_image=latest_image)
 
-def pose_estimation(frame, corners, ids, aruco_dict_type, arucoParams, matrix_coefficients, distortion_coefficients):
+def pose_estimation(frame, corners, ids, matrix_coefficients, distortion_coefficients):
 
     for i in range(0, len(ids)):
         # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
@@ -276,7 +275,7 @@ def calculate_angle(base_point, tip_point):
     angle = math.degrees(math.atan2(delta_y, delta_x))
     angle = round(angle)
 
-    # Changes negative theta to appropriate value
+    # Changes negative angle to appropriate value
     if angle < 0:
         angle *= -1
         angle = (180 - angle) + 180
@@ -284,20 +283,27 @@ def calculate_angle(base_point, tip_point):
     # Sets new starting point
     angle = angle - 90
 
-    # Changes negative theta to appropriate value
+    # Changes negative angle to appropriate value
     if angle < 0:
         angle *= -1
         angle = angle + 270
 
-    if angle < 90:
-        print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
+    # if angle < 90:
+    #     print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
 
     return angle
 
 
 def map_angle_to_pressure(angle):
     # Linearly map the angle to the pressure range
+    # Obtained by mapping angle from calculate_angle to the value on the air pressure gauge
+    # Then putting the values into excel to find the linear pattern
     pressure = int((0.51 * angle) - 18.83)
+
+    # 2 Bars is 29 PSI
+    if pressure < 30:
+        print(f"Pressure is {pressure} PSI which is less than 2 bars! Trigger the motor!")
+
     return pressure
 
 def detect_aruco(frame):
@@ -315,6 +321,7 @@ def detect_aruco(frame):
             bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
             topLeft = (int(topLeft[0]), int(topLeft[1]))
    
+            # Draw a box around the ArUCO Marker
             cv2.line(frame, topLeft, topRight, (0, 255, 0), 2)
             cv2.line(frame, topRight, bottomRight, (0, 255, 0), 2)
             cv2.line(frame, bottomRight, bottomLeft, (0, 255, 0), 2)
@@ -324,9 +331,10 @@ def detect_aruco(frame):
             cY = int((topLeft[1] + bottomRight[1]) / 2.0)
             cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
  
-            cv2.putText(frame, str(markerID),(topLeft[0], topLeft[1] - 15),cv2.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0), 2)
+            # Display the Marker ID
+            cv2.putText(frame, str(markerID),(topLeft[0], topLeft[1] - 15),cv2.FONT_HERSHEY_SIMPLEX,0.5, (255, 0, 0), 2)
 
-        frame = pose_estimation(frame, corners_pos, ids, aruco_dict, aruco_params, camera_matrix, distortion_coefficients)
+        frame = pose_estimation(frame, corners_pos, ids, camera_matrix, distortion_coefficients)
 
 def get_frame():
     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
@@ -370,8 +378,6 @@ def get_frame():
                 valve_status = 'Open'
             elif label == "BallValve_OFF":
                 valve_status = 'Closed'
-            elif label == "ArUCO":
-                arucoDetection = label
 
             # If both tip and base are detected, calculate the angle and pressure
             if tip is not None and base is not None:
@@ -385,11 +391,15 @@ def get_frame():
                 pressure = map_angle_to_pressure(angle)
 
                 # Display the pressure reading on the frame
-                cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
+                cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (255, 0, 0), 2)
 
-            if arucoDetection is not None:
-                detect_aruco(frame)
-                        
+        aruco_detected = detect_aruco(frame)
+    
+        if aruco_detected:
+        # If ArUco markers are detected, update the frame
+            frame = pose_estimation(frame, aruco_detected['corners'], aruco_detected['ids'], 
+                                    camera_matrix, distortion_coefficients)
+                     
         return [pressure, valve_status]
 
     while True:
