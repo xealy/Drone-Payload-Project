@@ -77,19 +77,21 @@
                   </thead>
                   <tbody>
                     {% for row in data %}
-                    <tr>
-                        <th scope="row">{{ row.timestamp }}</th>
-                        <td>{{ row['data'].reducing_gases }}</td>
-                        <td>{{ row['data'].oxidising_gases }}</td>
-                        <td>{{ row['data'].ammonia_gases }}</td>
-                        <td>{{ row['data'].temperature }}</td>
-                        <td>{{ row['data'].humidity }}</td>
-                        <td>{{ row['data'].air_pressure }}</td>
-                        <td>{{ row['data'].lux }}</td>
-                        <td>{% if row['image'].coordinates is not none %}{{ row['image'].coordinates }}{% endif %}</td>
-                        <td>{% if row['image'].valve_status is not none %}{{ row['image'].valve_status }}{% endif %}</td>
-                        <td>{% if row['image'].gauge_reading is not none %}{{ row['image'].gauge_reading }}{% endif %}</td>
-                    </tr>
+                        {% if row['data'] is not none or row['image'].coordinates is not none or row['image'].valve_status is not none or row['image'].gauge_reading is not none %}
+                        <tr>
+                            <th scope="row">{{ row.timestamp }}</th>
+                            <td>{{ row['data'].reducing_gases }}</td>
+                            <td>{{ row['data'].oxidising_gases }}</td>
+                            <td>{{ row['data'].ammonia_gases }}</td>
+                            <td>{{ row['data'].temperature }}</td>
+                            <td>{{ row['data'].humidity }}</td>
+                            <td>{{ row['data'].air_pressure }}</td>
+                            <td>{{ row['data'].lux }}</td>
+                            <td>{% if row['image'].coordinates is not none %}{{ row['image'].coordinates }}{% endif %}</td>
+                            <td>{% if row['image'].valve_status is not none %}{{ row['image'].valve_status }}{% endif %}</td>
+                            <td>{% if row['image'].gauge_reading is not none %}{{ row['image'].gauge_reading }}{% endif %}</td>
+                        </tr>
+                        {% endif %}
                     {% endfor %}
                   </tbody>
                 </table>
