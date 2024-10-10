@@ -300,14 +300,43 @@ def map_angle_to_pressure(angle):
     return pressure
 
 
+# def pose_estimation(frame, corners, ids, matrix_coefficients, distortion_coefficients):
+#     for i in range(0, len(ids)):
+#         # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
+#         rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients, distortion_coefficients)
+#         # Draw Axis
+#         cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
+#         cv2.putText(frame, str(tvec), (100, 200 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) 
+#     return frame
+
+
 def pose_estimation(frame, corners, ids, matrix_coefficients, distortion_coefficients):
-    for i in range(0, len(ids)):
-        # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
+    # Initialize a list to store the marker ID and pose information
+    marker_positions = []
+    
+    for i in range(len(ids)):
+        # Estimate pose of each marker
         rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients, distortion_coefficients)
-        # Draw Axis
+        
+        # Draw Axis on the frame
         cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
-        cv2.putText(frame, str(tvec), (100, 200 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) 
-    return frame
+        
+        # Add the marker ID and its translation vector (x, y, z coordinates) to the list
+        marker_info = {
+            'id': ids[i],
+            'x': tvec[0][0][0],
+            'y': tvec[0][0][1],
+            'z': tvec[0][0][2]
+        }
+        marker_positions.append(marker_info)
+        
+        # Optionally draw the position on the frame (for visualization)
+        cv2.putText(frame, f"ID: {marker_info['id']} X: {marker_info['x']:.2f} Y: {marker_info['y']:.2f} Z: {marker_info['z']:.2f}", 
+                    (int(corners[i][0][0][0]), int(corners[i][0][0][1] - 10)), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    
+    # Return the annotated frame and the list of marker positions
+    return frame, marker_positions
 
 
 def detect_aruco(frame):
@@ -336,7 +365,9 @@ def detect_aruco(frame):
             # Display the Marker ID
             cv2.putText(frame, str(markerID),(topLeft[0], topLeft[1] - 15),cv2.FONT_HERSHEY_SIMPLEX,0.5, (255, 0, 0), 2)
 
-        frame = pose_estimation(frame, corners_pos, ids, camera_matrix, distortion_coefficients)
+        frame, marker_positions = pose_estimation(frame, corners_pos, ids, camera_matrix, distortion_coefficients)
+
+        return marker_positions
 
 
 def get_frame():
@@ -363,6 +394,8 @@ def get_frame():
         base = None
         pressure = None
         valve_status = None
+        aruco_marker = None
+        marker_positions = None
         for detection in detections:
             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
             cv2.putText(frame, labels[detection.label], (bbox[0] + 10, bbox[1] + 20), cv2.FONT_HERSHEY_TRIPLEX, 0.5, 255)
@@ -380,6 +413,8 @@ def get_frame():
                 valve_status = 'Open'
             elif label == "BallValve_OFF":
                 valve_status = 'Closed'
+            elif label == "ArUCO":
+                aruco_marker = True
 
             # If both tip and base are detected, calculate the angle and pressure
             if tip is not None and base is not None:
@@ -395,14 +430,12 @@ def get_frame():
                 # Display the pressure reading on the frame
                 cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
         
+        if aruco_marker is not None:
+            marker_positions = detect_aruco(frame)
+            # print('r u printing ?')
+            print(marker_positions)
 
-        aruco_detected = detect_aruco(frame)
-    
-        # If ArUco markers are detected, update the frame
-        if aruco_detected:
-            frame = pose_estimation(frame, aruco_detected['corners'], aruco_detected['ids'], camera_matrix, distortion_coefficients)
-
-        return [pressure, valve_status]
+        return [pressure, valve_status, marker_positions]
 
     while True:
         inRgb = qRgb.get()
