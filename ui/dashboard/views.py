@@ -20,9 +20,49 @@ import json
 import blobconverter
 import base64
 import math
+import cv2.aruco as aruco
 
 
 bp = Blueprint('main', __name__)
+
+
+# START OF ARUCO DEFINITIONS
+# Camera specs obtained from calibration_reader.py
+camera_matrix = np.array([[3.02075488e+03, 0.00000000e+00, 1.87725024e+03],
+ [0.00000000e+00, 3.02075488e+03, 1.10085803e+03],
+ [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
+
+distortion_coefficients = np.array([12.180327415466309, 7.460699081420898,
+-8.580022404203191e-05, -0.0012392610078677535,
+56.39138412475586])
+
+aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_1000)
+aruco_params = cv2.aruco.DetectorParameters()
+
+ARUCO_DICT = {
+	"DICT_4X4_50": cv2.aruco.DICT_4X4_50,
+	"DICT_4X4_100": cv2.aruco.DICT_4X4_100,
+	"DICT_4X4_250": cv2.aruco.DICT_4X4_250,
+	"DICT_4X4_1000": cv2.aruco.DICT_4X4_1000,
+	"DICT_5X5_50": cv2.aruco.DICT_5X5_50,
+	"DICT_5X5_100": cv2.aruco.DICT_5X5_100,
+	"DICT_5X5_250": cv2.aruco.DICT_5X5_250,
+	"DICT_5X5_1000": cv2.aruco.DICT_5X5_1000,
+	"DICT_6X6_50": cv2.aruco.DICT_6X6_50,
+	"DICT_6X6_100": cv2.aruco.DICT_6X6_100,
+	"DICT_6X6_250": cv2.aruco.DICT_6X6_250,
+	"DICT_6X6_1000": cv2.aruco.DICT_6X6_1000,
+	"DICT_7X7_50": cv2.aruco.DICT_7X7_50,
+	"DICT_7X7_100": cv2.aruco.DICT_7X7_100,
+	"DICT_7X7_250": cv2.aruco.DICT_7X7_250,
+	"DICT_7X7_1000": cv2.aruco.DICT_7X7_1000,
+	"DICT_ARUCO_ORIGINAL": cv2.aruco.DICT_ARUCO_ORIGINAL,
+	"DICT_APRILTAG_16h5": cv2.aruco.DICT_APRILTAG_16h5,
+	"DICT_APRILTAG_25h9": cv2.aruco.DICT_APRILTAG_25h9,
+	"DICT_APRILTAG_36h10": cv2.aruco.DICT_APRILTAG_36h10,
+	"DICT_APRILTAG_36h11": cv2.aruco.DICT_APRILTAG_36h11
+}
+# END OF ARUCO DEFINITIONS
 
 
 # START OF TAIP CONFIG
@@ -260,6 +300,45 @@ def map_angle_to_pressure(angle):
     return pressure
 
 
+def pose_estimation(frame, corners, ids, matrix_coefficients, distortion_coefficients):
+    for i in range(0, len(ids)):
+        # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
+        rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients, distortion_coefficients)
+        # Draw Axis
+        cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
+        cv2.putText(frame, str(tvec), (100, 200 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) 
+    return frame
+
+
+def detect_aruco(frame):
+    (corners, ids, rejectedImgPoints) = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
+    if len(corners) > 0:
+        ids = ids.flatten()
+        corners_pos = corners
+        for (markerCorner, markerID) in zip(corners, ids):
+            corners = markerCorner.reshape((4, 2))
+            (topLeft, topRight, bottomRight, bottomLeft) = corners
+            topRight = (int(topRight[0]), int(topRight[1]))
+            bottomRight = (int(bottomRight[0]), int(bottomRight[1]))
+            bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
+            topLeft = (int(topLeft[0]), int(topLeft[1]))
+   
+            # Draw a box around the ArUCO Marker
+            cv2.line(frame, topLeft, topRight, (0, 255, 0), 2)
+            cv2.line(frame, topRight, bottomRight, (0, 255, 0), 2)
+            cv2.line(frame, bottomRight, bottomLeft, (0, 255, 0), 2)
+            cv2.line(frame, bottomLeft, topLeft, (0, 255, 0), 2)
+
+            cX = int((topLeft[0] + bottomRight[0]) / 2.0)
+            cY = int((topLeft[1] + bottomRight[1]) / 2.0)
+            cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
+ 
+            # Display the Marker ID
+            cv2.putText(frame, str(markerID),(topLeft[0], topLeft[1] - 15),cv2.FONT_HERSHEY_SIMPLEX,0.5, (255, 0, 0), 2)
+
+        frame = pose_estimation(frame, corners_pos, ids, camera_matrix, distortion_coefficients)
+
+
 def get_frame():
     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
@@ -316,6 +395,13 @@ def get_frame():
                 # Display the pressure reading on the frame
                 cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
         
+
+        aruco_detected = detect_aruco(frame)
+    
+        # If ArUco markers are detected, update the frame
+        if aruco_detected:
+            frame = pose_estimation(frame, aruco_detected['corners'], aruco_detected['ids'], camera_matrix, distortion_coefficients)
+
         return [pressure, valve_status]
 
     while True:
