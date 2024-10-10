@@ -422,8 +422,6 @@ def get_frame():
         
         if aruco_marker is not None:
             marker_positions = detect_aruco(frame)
-            # print('r u printing ?')
-            print(marker_positions)
 
         return [pressure, valve_status, marker_positions]
 
