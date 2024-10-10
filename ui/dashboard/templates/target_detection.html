@@ -2,7 +2,11 @@
 
 {% block head %}
 <link rel="stylesheet" href="/static/css/index.css?nocache={timestamp}" type="text/css">
-<!--<link rel="stylesheet" href="/static/css/index.css">-->
+<script>
+  setTimeout(function() {
+      window.location.reload();
+  }, 4000); // Refresh the page every 4 seconds
+</script>
 {% endblock %}
 
 {% block content %}
@@ -15,16 +19,16 @@
                 <p class="pt-2">Image Stream</p>
                 {% for image in images %}
                     <div class="card">
-                        <img class="card-img-top" src="{{ url_for('static', filename=image.image_path) }}" alt="Card image cap">
+                        <img class="card-img-top" src="data:image/jpeg;base64,{{ image.image_bytestring }}" alt="Card image cap">
                     </div>
                 {% endfor %}
             </div>
             <div class="col-9">
                 <div class="row">
                     <div class="col bg-light text-center">
-                        <p class="pt-2">Current Image</p>
+                        <p class="pt-2">Live Feed</p>
                         <div class="card p-1">
-                          <img style="height: 300px; max-width: 70%" class="card-img-top d-block m-auto" src="https://via.placeholder.com/240x150.png/afded5/afded5?Text=240x150" alt="Card image cap">
+                          <img style="height: 300px; max-width: 40%" class="card-img-top d-block m-auto" src="{{ url_for('main.video_feed') }}">
                         </div>
                     </div>
                 </div>
@@ -44,18 +48,18 @@
                           <tbody>
                             <tr>
                               <th scope="row">Ball Valve</th>
-                              <td>-</td>
-                              <td>-</td>
+                              <td>{% if latest_valve_status is not none %}{{ latest_valve_status.timestamp }}{% else %}-{% endif %}</td>
+                              <td>{% if latest_valve_status is not none %}{{ latest_valve_status.valve_status }}{% else %}-{% endif %}</td>
                             </tr>
                             <tr>
                               <th scope="row">ArUco Marker</th>
-                              <td>-</td>
-                              <td>-</td>
+                              <td>{% if latest_coordinates is not none %}{{ latest_coordinates.timestamp }}{% else %}-{% endif %}</td>
+                              <td>{% if latest_coordinates is not none %}{{ latest_coordinates.coordinates }}{% else %}-{% endif %}</td>
                             </tr>
                             <tr>
                               <th scope="row">Air Pressure Gauge</th>
-                              <td>-</td>
-                              <td>-</td>
+                              <td>{% if latest_gauge_reading is not none %}{{ latest_gauge_reading.timestamp }}{% else %}-{% endif %}</td>
+                              <td>{% if latest_gauge_reading is not none %}{{ latest_gauge_reading.gauge_reading }}{% else %}-{% endif %}</td>
                             </tr>
                           </tbody>
                         </table>

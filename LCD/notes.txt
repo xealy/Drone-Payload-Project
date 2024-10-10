@@ -1,0 +1,19 @@
+To edit .bashrc, use this command:
+code ~/.bashrc
+
+Uncomment these lines in "~/.bashrc" to display_ip on LCD on boot:
+source /home/455Team/Documents/egh455-merged-env/bin/activate
+python3 /home/455Team/Documents/EGH455-UAV-Project/LCD/display_ip.py &
+export OPENBLAS_CORETYPE=ARMV8
+
+Here's an additional script we might need to apppend to kill the on-boot LCD process to free up the pins ??
+# Find the PID of the display_ip.py process
+pid=$(pgrep -f display_ip.py)
+
+# If the PID is found, kill the process
+if [ -n "$pid" ]; then
+    echo "Killing process with PID: $pid"
+    kill $pid
+else
+    echo "No process found for display_ip.py"
+fi
