@@ -27,24 +27,44 @@ import cv2.aruco as aruco
 from PIL import Image
 from PIL import ImageDraw, ImageFont
 import st7735
+import colorsys
+from fonts.ttf import RobotoMedium as UserFont
 
 bp = Blueprint('main', __name__)
 
+# GlOBAL FOR LCD
+lcd_mode = None
 
 # Start LCD display
 disp = st7735.ST7735(
     port=0,
     cs=1,
-    dc=9,
-    backlight=12,
+    dc="GPIO9",
+    backlight="GPIO12",
     rotation=270,
-    spi_speed_hz=10000000
+    spi_speed_hz=1000000 # 1 MHz
 )
 
 # Initialize display
 disp.begin()
 WIDTH = disp.width
 HEIGHT = disp.height
+
+# Set up canvas and font (for )
+img = Image.new("RGB", (WIDTH, HEIGHT), color=(0, 0, 0))
+draw = ImageDraw.Draw(img)
+path = os.path.dirname(os.path.realpath(__file__))
+font_size = 20
+font = ImageFont.truetype(UserFont, font_size)
+message = ""
+# The position of the top bar
+top_pos = 25
+
+# Create a values dict to store the data
+variables = ["temperature"]
+values = {}
+for v in variables:
+    values[v] = [1] * WIDTH
 
 def display_lcd(frame):
     # Convert frame to PIL
@@ -53,6 +73,29 @@ def display_lcd(frame):
     im_pil = im_pil.resize((WIDTH, HEIGHT))
     # Display image on LCD
     disp.display(im_pil)
+
+def display_text(variable, data, unit):
+    # Maintain length of list
+    values[variable] = values[variable][1:] + [data]
+    # Scale the values for the variable between 0 and 1
+    vmin = min(values[variable])
+    vmax = max(values[variable])
+    colours = [(v - vmin + 1) / (vmax - vmin + 1) for v in values[variable]]
+    # Format the variable name and value
+    message = f"{variable[:4]}: {data:.1f} {unit}"
+    draw.rectangle((0, 0, WIDTH, HEIGHT), (255, 255, 255))
+    for i in range(len(colours)):
+        # Convert the values to colours from red to blue
+        colour = (1.0 - colours[i]) * 0.6
+        r, g, b = [int(x * 255.0) for x in colorsys.hsv_to_rgb(colour, 1.0, 1.0)]
+        # Draw a 1-pixel wide rectangle of colour
+        draw.rectangle((i, top_pos, i + 1, HEIGHT), (r, g, b))
+        # Draw a line graph in black
+        line_y = HEIGHT - (top_pos + (colours[i] * (HEIGHT - top_pos))) + top_pos
+        draw.rectangle((i, line_y, i + 1, line_y + 1), (0, 0, 0))
+    # Write the text at the top in black
+    draw.text((0, 0), message, font=font, fill=(0, 0, 0))
+    disp.display(img)
 
 
 # START OF ARUCO DEFINITIONS
@@ -175,6 +218,11 @@ lastSavedTime = time.monotonic() # ALEX ADDED THIS
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
+    global lcd_mode # LCD GLOBAL
+
+    if request.method == 'GET':
+        lcd_mode = 'AQ'
+
     def make_chart(data):
         # Create a new instance of MeasurementChart
         NewChart = MeasurementChart()
@@ -208,8 +256,8 @@ def index():
         print("we got a post request :))")
         json_data = request.get_json()
 
-        if json_data:
-            print(f"Received data: {json_data}")
+        # if json_data:
+        #     print(f"Received data: {json_data}")
 
         # Extract data from the request
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
@@ -220,6 +268,9 @@ def index():
         humidity = json_data['humidity']
         air_pressure = json_data['pressure']
         lux = json_data['light']
+
+        if lcd_mode == 'AQ':
+            display_text(variables[0], temperature , "°C")
 
         # Create a new DataModel instance
         new_record = DataModel(
@@ -245,6 +296,9 @@ def index():
     latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
     data = db.session.query(DataModel)
 
+    # if lcd_mode == 'AQ':
+    #     display_text(variables[0], latest_data.temperature, "°C")
+
     ChartJSON = make_chart(data)
 
     return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
@@ -252,9 +306,14 @@ def index():
 
 @bp.route('/target_detection', methods=['GET', 'POST'])
 def target_detection():
+    global lcd_mode # LCD GLOBAL
+
+    if request.method == 'GET':
+        lcd_mode = 'TAIP'
+
     if request.method == 'POST':
         print("we got a post request :))")
-        json_data = request.get_json()
+        # json_data = request.get_json()
 
         # Extract data from JSON object
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
@@ -390,6 +449,8 @@ def detect_aruco(frame):
 
 
 def get_frame():
+    global lcd_mode # LCD GLOBAL
+
     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
     qDet = device.getOutputQueue(name="nn", maxSize=4, blocking=False)
@@ -452,8 +513,6 @@ def get_frame():
         if aruco_marker is not None:
             marker_positions = detect_aruco(frame)
 
-        # display_lcd(frame)
-
         return [pressure, valve_status, marker_positions]
 
     while True:
@@ -471,7 +530,6 @@ def get_frame():
 
         if frame is not None:
             taip_detection_values = displayFrame("rgb", frame, detections)
-            display_lcd(frame)
             _, jpeg = cv2.imencode('.jpg', frame)
 
             # ALEX ADDED THIS: save image every 4 seconds (for image stream)
@@ -488,6 +546,9 @@ def get_frame():
                 new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
                 # cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
+
+                if lcd_mode == 'TAIP':
+                    display_lcd(frame)
                 
                 # SEND POST REQUEST to 'target_detection' endpoint
                 if taip_detection_values[2] is not None:
