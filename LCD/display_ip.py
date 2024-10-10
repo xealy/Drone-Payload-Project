@@ -68,13 +68,13 @@ draw.text((x, y), message, font=font, fill=text_colour)
 disp.display(img)
 
 # Keep running.
-try:
-    while True:
-        pass
+# try:
+#     while True:
+#         pass
 
 # Turn off backlight on control-c
-except KeyboardInterrupt:
-    disp.set_backlight(0)
+# except KeyboardInterrupt:
+#     disp.set_backlight(0)
 
 # To print on Pi reboot:
 # Edit crontab -e

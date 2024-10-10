@@ -300,16 +300,6 @@ def map_angle_to_pressure(angle):
     return pressure
 
 
-# def pose_estimation(frame, corners, ids, matrix_coefficients, distortion_coefficients):
-#     for i in range(0, len(ids)):
-#         # Estimate pose of each marker and return the values rvec and tvec---(different from those of camera coefficients)
-#         rvec, tvec, markerPoints = cv2.aruco.estimatePoseSingleMarkers(corners[i], 0.02, matrix_coefficients, distortion_coefficients)
-#         # Draw Axis
-#         cv2.drawFrameAxes(frame, matrix_coefficients, distortion_coefficients, rvec, tvec, 0.01)
-#         cv2.putText(frame, str(tvec), (100, 200 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2) 
-#     return frame
-
-
 def pose_estimation(frame, corners, ids, matrix_coefficients, distortion_coefficients):
     # Initialize a list to store the marker ID and pose information
     marker_positions = []
