@@ -469,15 +469,39 @@ def get_frame():
                 # cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
 
+                print(taip_detection_values[0])
+                if taip_detection_values[2] is not None:
+                    print(taip_detection_values[2][0]['id'])
+                    print(taip_detection_values[2][0]['x'])
+                    print(taip_detection_values[2][0]['y'])
+                    print(taip_detection_values[2][0]['z'])
+
                 # SEND POST REQUEST to 'target_detection' endpoint
-                data = {
-                    "timestamp": current_datetime_string,
-                    "image_path": new_image_to_serve,
-                    "coordinates": None,
-                    "valve_status": taip_detection_values[1],
-                    "gauge_reading": taip_detection_values[0],
-                    "image_bytestring_encoded": frame_bytestring_encoded
-                }
+                if taip_detection_values[2] is not None:
+                    x_coord = round(taip_detection_values[2][0]['x'], 3)
+                    y_coord = round(taip_detection_values[2][0]['y'], 3)
+                    z_coord = round(taip_detection_values[2][0]['z'], 3)
+
+                    data = {
+                        "timestamp": current_datetime_string,
+                        "image_path": new_image_to_serve,
+                        "coordinates": f"({x_coord}, {y_coord}, {z_coord})",
+                        "valve_status": taip_detection_values[1],
+                        "gauge_reading": taip_detection_values[0],
+                        "image_bytestring_encoded": frame_bytestring_encoded, 
+                        "aruco_id": str(taip_detection_values[2][0]['id'])
+                    }
+                else:
+                    data = {
+                        "timestamp": current_datetime_string,
+                        "image_path": new_image_to_serve,
+                        "coordinates": None,
+                        "valve_status": taip_detection_values[1],
+                        "gauge_reading": taip_detection_values[0],
+                        "image_bytestring_encoded": frame_bytestring_encoded, 
+                        "aruco_id": None
+                    }
+
                 response = requests.post("http://127.0.0.1:5000/target_detection", json=data)
                 if response.status_code == 200:
                     print("Data posted successfully.")
