@@ -23,7 +23,36 @@ import math
 import cv2.aruco as aruco
 
 
+# LCD imports
+from PIL import Image
+from PIL import ImageDraw, ImageFont
+import st7735
+
 bp = Blueprint('main', __name__)
+
+
+# Start LCD display
+disp = st7735.ST7735(
+    port=0,
+    cs=1,
+    dc=9,
+    backlight=12,
+    rotation=270,
+    spi_speed_hz=10000000
+)
+
+# Initialize display
+disp.begin()
+WIDTH = disp.width
+HEIGHT = disp.height
+
+def display_lcd(frame):
+    # Convert frame to PIL
+    im_pil = Image.fromarray(frame)
+    # Resize the image
+    im_pil = im_pil.resize((WIDTH, HEIGHT))
+    # Display image on LCD
+    disp.display(im_pil)
 
 
 # START OF ARUCO DEFINITIONS
@@ -423,6 +452,8 @@ def get_frame():
         if aruco_marker is not None:
             marker_positions = detect_aruco(frame)
 
+        # display_lcd(frame)
+
         return [pressure, valve_status, marker_positions]
 
     while True:
@@ -440,6 +471,7 @@ def get_frame():
 
         if frame is not None:
             taip_detection_values = displayFrame("rgb", frame, detections)
+            display_lcd(frame)
             _, jpeg = cv2.imencode('.jpg', frame)
 
             # ALEX ADDED THIS: save image every 4 seconds (for image stream)
