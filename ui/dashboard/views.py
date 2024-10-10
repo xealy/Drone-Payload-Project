@@ -468,14 +468,7 @@ def get_frame():
                 new_image = f'/home/455Team/Documents/EGH455-UAV-Project/ui/dashboard/static/image_stream/{currentDatetimeFile}.jpg'
                 # cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
-
-                print(taip_detection_values[0])
-                if taip_detection_values[2] is not None:
-                    print(taip_detection_values[2][0]['id'])
-                    print(taip_detection_values[2][0]['x'])
-                    print(taip_detection_values[2][0]['y'])
-                    print(taip_detection_values[2][0]['z'])
-
+                
                 # SEND POST REQUEST to 'target_detection' endpoint
                 if taip_detection_values[2] is not None:
                     x_coord = round(taip_detection_values[2][0]['x'], 3)
