@@ -37,6 +37,7 @@
                   </thead>
                   <tbody>
                   {% for row in data %}
+                    {% if row['data'] is not none or row['image'].coordinates is not none or row['image'].valve_status is not none or row['image'].gauge_reading is not none %}
                     <tr>
                         <th scope="row">{{ row.timestamp }}</th>
                         <td>{{ row['data'].reducing_gases }}</td>
@@ -50,6 +51,7 @@
                         <td>{% if row['image'].valve_status is not none %}{{ row['image'].valve_status }}{% endif %}</td>
                         <td>{% if row['image'].gauge_reading is not none %}{{ row['image'].gauge_reading }}{% endif %}</td>
                     </tr>
+                    {% endif %}
                   {% endfor %}
                   </tbody>
                 </table>
