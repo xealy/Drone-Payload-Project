@@ -50,7 +50,7 @@ disp.begin()
 WIDTH = disp.width
 HEIGHT = disp.height
 
-# Set up canvas and font (for )
+# Set up canvas and font (for AQ display)
 img = Image.new("RGB", (WIDTH, HEIGHT), color=(0, 0, 0))
 draw = ImageDraw.Draw(img)
 path = os.path.dirname(os.path.realpath(__file__))
@@ -60,7 +60,7 @@ message = ""
 # The position of the top bar
 top_pos = 25
 
-# Create a values dict to store the data
+# Create a values dict to store the data (for AQ display)
 variables = ["temperature"]
 values = {}
 for v in variables:
@@ -313,7 +313,7 @@ def target_detection():
 
     if request.method == 'POST':
         print("we got a post request :))")
-        # json_data = request.get_json()
+        json_data = request.get_json()
 
         # Extract data from JSON object
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
