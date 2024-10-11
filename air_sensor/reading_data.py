@@ -1,4 +1,6 @@
 import time 
+import requests 
+from datetime import datetime 
 # from smbus2 import SMBus - may not be needed, or needed for temp 
 from bme280 import BME280 
 from ltr559 import LTR559 
@@ -7,6 +9,10 @@ from pms5003 import PMS5003
 from enviroplus.noise import Noise 
 from subprocess import PIPE, Popen
 import numpy as np 
+
+#date time stamp 
+now = datetime.now()
+#record in flie with everything and send all as a json packet for the webserver 
 
 # CPU temperature set up
 def get_cpu_temperature():
