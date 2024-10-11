@@ -256,8 +256,8 @@ def index():
         print("we got a post request :))")
         json_data = request.get_json()
 
-        # if json_data:
-        #     print(f"Received data: {json_data}")
+        if json_data:
+            print(f"Received data: {json_data}")
 
         # Extract data from the request
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
