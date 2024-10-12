@@ -54,7 +54,7 @@
                             <tr>
                               <th scope="row">ArUco Marker</th>
                               <td>{% if latest_coordinates is not none %}{{ latest_coordinates.timestamp }}{% else %}-{% endif %}</td>
-                              <td>{% if latest_coordinates is not none %}{{ latest_coordinates.coordinates }}{% else %}-{% endif %}</td>
+                              <td>{% if latest_coordinates is not none %} Marker {{ latest_coordinates.aruco_id }} {{ latest_coordinates.coordinates }}{% else %}-{% endif %}</td>
                             </tr>
                             <tr>
                               <th scope="row">Air Pressure Gauge</th>
