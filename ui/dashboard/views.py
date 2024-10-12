@@ -28,13 +28,16 @@ from PIL import ImageDraw, ImageFont
 import st7735
 import colorsys
 from fonts.ttf import RobotoMedium as UserFont
+import socket
 
 
 bp = Blueprint('main', __name__)
 
 
-# GlOBAL FOR LCD
-lcd_mode = None
+# GlOBALS FOR LCD
+lcd_mode_num = 0
+lcd_variables = ["IP", "AQ", "TAIP"]
+lcd_mode = lcd_variables[lcd_mode_num]
 
 # Start LCD display
 disp = st7735.ST7735(
@@ -67,6 +70,46 @@ values = {}
 for v in variables:
     values[v] = [1] * WIDTH
 
+def display_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def get_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Connect to a host to retrieve the ipaddr
+            s.connect(('8.8.8.8', 80))
+            ipaddr = s.getsockname()[0]
+        except Exception:
+            # Catch undesired ipaddr results
+            ipaddr = '127.0.0.1'
+        finally:
+            s.close()
+        return ipaddr
+
+    # New canvas to draw on.
+    img = Image.new("RGB", (WIDTH, HEIGHT), color=(0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # Text settings.
+    font_size = 25
+    font = ImageFont.truetype(UserFont, font_size)
+    text_colour = (255, 255, 255)
+    back_colour = (0, 170, 170)
+
+    message = get_ip()
+
+    x1, y1, x2, y2 = font.getbbox(message)
+    size_x = x2 - x1
+    size_y = y2 - y1
+
+    # Calculate text position
+    x = (WIDTH - size_x) / 2
+    y = (HEIGHT / 2) - (size_y / 2)
+
+    # Draw background rectangle and write text.
+    draw.rectangle((0, 0, 160, 80), back_colour)
+    draw.text((x, y), message, font=font, fill=text_colour)
+    disp.display(img)
+
 def display_lcd(frame):
     # Convert frame to PIL
     im_pil = Image.fromarray(frame)
@@ -98,6 +141,8 @@ def display_text(variable, data, unit):
     draw.text((0, 0), message, font=font, fill=(0, 0, 0))
     disp.display(img)
 
+# DISPLAY IP FIRST
+display_ip()
 
 # START OF ARUCO DEFINITIONS
 # Camera specs obtained from calibration_reader.py
@@ -220,9 +265,8 @@ lastSavedTime = time.monotonic() # ALEX ADDED THIS
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     global lcd_mode # LCD GLOBAL
-
-    if request.method == 'GET':
-        lcd_mode = 'AQ'
+    global lcd_mode_num
+    global lcd_variables
 
     def make_chart(data):
         # Create a new instance of MeasurementChart
@@ -269,8 +313,23 @@ def index():
         humidity = json_data['humidity']
         air_pressure = json_data['pressure']
         lux = json_data['light']
+        change_lcd = json_data['change_lcd'] # for LCD toggle
 
-        if lcd_mode == 'AQ':
+        if change_lcd == 'True':
+            
+            # toggle LCD mode
+            lcd_mode_num += 1
+            lcd_mode_num %= len(lcd_variables)
+
+            if lcd_mode_num == 0: # toggle to IP display
+                lcd_mode = lcd_variables[lcd_mode_num]
+                display_ip()
+            if lcd_mode_num == 1: # toggle to AQ display
+                lcd_mode = lcd_variables[lcd_mode_num]
+            if lcd_mode_num == 2: # toggle to TAIP display
+                lcd_mode = lcd_variables[lcd_mode_num]
+
+        if lcd_mode == lcd_variables[1]:
             display_text(variables[0], temperature , "°C")
 
         # Create a new DataModel instance
@@ -312,9 +371,6 @@ def index():
 @bp.route('/target_detection', methods=['GET', 'POST'])
 def target_detection():
     global lcd_mode # LCD GLOBAL
-
-    if request.method == 'GET':
-        lcd_mode = 'TAIP'
 
     if request.method == 'POST':
         print("we got a post request :))")
@@ -555,7 +611,7 @@ def get_frame():
                 # cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
 
-                if lcd_mode == 'TAIP':
+                if lcd_mode == lcd_variables[2]:
                     display_lcd(frame)
                 
                 # SEND POST REQUEST to 'target_detection' endpoint
@@ -717,6 +773,41 @@ def system_logs():
     merged_results = sorted(merged_results, key=lambda x: x['timestamp'], reverse=True)
 
     return render_template('system_logs.html', data=merged_results)
+
+
+@bp.route('/lcd_ip', methods=['GET'])
+def lcd_ip():
+    global lcd_mode
+    global lcd_mode_num
+    global lcd_variables
+
+    lcd_mode_num = 0
+    lcd_mode = lcd_variables[lcd_mode_num]
+    if lcd_mode == lcd_variables[0]:
+        display_ip()
+    return '', 204  # No content
+
+
+@bp.route('/lcd_temp', methods=['GET'])
+def lcd_temp():
+    global lcd_mode
+    global lcd_mode_num
+    global lcd_variables
+
+    lcd_mode_num = 1
+    lcd_mode = lcd_variables[lcd_mode_num]
+    return '', 204  # No content
+
+
+@bp.route('/lcd_feed', methods=['GET'])
+def lcd_feed():
+    global lcd_mode
+    global lcd_mode_num
+    global lcd_variables
+
+    lcd_mode_num = 2
+    lcd_mode = lcd_variables[lcd_mode_num]
+    return '', 204  # No content
 
 
 @bp.route('/static/<path:path>')
