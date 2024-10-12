@@ -322,6 +322,7 @@ def target_detection():
         valve_status = json_data['valve_status']
         gauge_reading = json_data['gauge_reading']
         image_bytestring = json_data['image_bytestring_encoded']
+        aruco_id = json_data['aruco_id']
 
         # Create a new ImageModel instance
         new_record = ImageModel(
@@ -330,7 +331,8 @@ def target_detection():
             coordinates=coordinates,
             valve_status=valve_status,
             gauge_reading=gauge_reading,
-            image_bytestring=image_bytestring
+            image_bytestring=image_bytestring,
+            aruco_id=aruco_id
         )
 
         # Add the record to the session and commit
