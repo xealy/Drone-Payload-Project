@@ -28,6 +28,7 @@ from PIL import ImageDraw, ImageFont
 import st7735
 import colorsys
 from fonts.ttf import RobotoMedium as UserFont
+import socket
 
 
 bp = Blueprint('main', __name__)
@@ -66,6 +67,46 @@ variables = ["temperature"]
 values = {}
 for v in variables:
     values[v] = [1] * WIDTH
+
+def display_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def get_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Connect to a host to retrieve the ipaddr
+            s.connect(('8.8.8.8', 80))
+            ipaddr = s.getsockname()[0]
+        except Exception:
+            # Catch undesired ipaddr results
+            ipaddr = '127.0.0.1'
+        finally:
+            s.close()
+        return ipaddr
+
+    # New canvas to draw on.
+    img = Image.new("RGB", (WIDTH, HEIGHT), color=(0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    # Text settings.
+    font_size = 25
+    font = ImageFont.truetype(UserFont, font_size)
+    text_colour = (255, 255, 255)
+    back_colour = (0, 170, 170)
+
+    message = get_ip()
+
+    x1, y1, x2, y2 = font.getbbox(message)
+    size_x = x2 - x1
+    size_y = y2 - y1
+
+    # Calculate text position
+    x = (WIDTH - size_x) / 2
+    y = (HEIGHT / 2) - (size_y / 2)
+
+    # Draw background rectangle and write text.
+    draw.rectangle((0, 0, 160, 80), back_colour)
+    draw.text((x, y), message, font=font, fill=text_colour)
+    disp.display(img)
 
 def display_lcd(frame):
     # Convert frame to PIL
@@ -221,8 +262,8 @@ lastSavedTime = time.monotonic() # ALEX ADDED THIS
 def index():
     global lcd_mode # LCD GLOBAL
 
-    if request.method == 'GET':
-        lcd_mode = 'AQ'
+    # if request.method == 'GET':
+    #     lcd_mode = 'AQ'
 
     def make_chart(data):
         # Create a new instance of MeasurementChart
@@ -313,8 +354,8 @@ def index():
 def target_detection():
     global lcd_mode # LCD GLOBAL
 
-    if request.method == 'GET':
-        lcd_mode = 'TAIP'
+    # if request.method == 'GET':
+    #     lcd_mode = 'TAIP'
 
     if request.method == 'POST':
         print("we got a post request :))")
@@ -717,6 +758,29 @@ def system_logs():
     merged_results = sorted(merged_results, key=lambda x: x['timestamp'], reverse=True)
 
     return render_template('system_logs.html', data=merged_results)
+
+
+@bp.route('/lcd_ip', methods=['GET'])
+def lcd_ip():
+    global lcd_mode
+    lcd_mode = 'IP'
+    if lcd_mode == 'IP':
+        display_ip()
+    return '', 204  # No content
+
+
+@bp.route('/lcd_temp', methods=['GET'])
+def lcd_temp():
+    global lcd_mode
+    lcd_mode = 'AQ'
+    return '', 204  # No content
+
+
+@bp.route('/lcd_feed', methods=['GET'])
+def lcd_feed():
+    global lcd_mode
+    lcd_mode = 'TAIP'
+    return '', 204  # No content
 
 
 @bp.route('/static/<path:path>')
