@@ -30,6 +30,7 @@
                         <th scope="col">Hum.</th>
                         <th scope="col">Air Press.</th>
                         <th scope="col">Lux</th>
+                        <th scope="col">Aruco ID</th>
                         <th scope="col">Coords.</th>
                         <th scope="col">Valve</th>
                         <th scope="col">Gauge</th>
@@ -47,6 +48,7 @@
                         <td>{{ row['data'].humidity }}</td>
                         <td>{{ row['data'].air_pressure }}</td>
                         <td>{{ row['data'].lux }}</td>
+                        <td>{% if row['image'].aruco_id is not none %}{{ row['image'].aruco_id }}{% endif %}</td>
                         <td>{% if row['image'].coordinates is not none %}{{ row['image'].coordinates }}{% endif %}</td>
                         <td>{% if row['image'].valve_status is not none %}{{ row['image'].valve_status }}{% endif %}</td>
                         <td>{% if row['image'].gauge_reading is not none %}{{ row['image'].gauge_reading }}{% endif %}</td>

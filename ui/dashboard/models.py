@@ -24,6 +24,7 @@ class ImageModel(db.Model):
     valve_status = db.Column(db.String, nullable=True)
     gauge_reading = db.Column(db.String, nullable=True)
     image_bytestring = db.Column(db.Text, nullable=True)
+    aruco_id = db.Column(db.String, nullable=True)
 
 
 class MeasurementChart(BaseChart):
