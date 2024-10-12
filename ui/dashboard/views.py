@@ -34,8 +34,10 @@ import socket
 bp = Blueprint('main', __name__)
 
 
-# GlOBAL FOR LCD
-lcd_mode = None
+# GlOBALS FOR LCD
+lcd_mode_num = 0
+lcd_variables = ["IP", "AQ", "TAIP"]
+lcd_mode = lcd_variables[lcd_mode_num]
 
 # Start LCD display
 disp = st7735.ST7735(
@@ -139,6 +141,8 @@ def display_text(variable, data, unit):
     draw.text((0, 0), message, font=font, fill=(0, 0, 0))
     disp.display(img)
 
+# DISPLAY IP FIRST
+display_ip()
 
 # START OF ARUCO DEFINITIONS
 # Camera specs obtained from calibration_reader.py
@@ -261,9 +265,8 @@ lastSavedTime = time.monotonic() # ALEX ADDED THIS
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     global lcd_mode # LCD GLOBAL
-
-    # if request.method == 'GET':
-    #     lcd_mode = 'AQ'
+    global lcd_mode_num
+    global lcd_variables
 
     def make_chart(data):
         # Create a new instance of MeasurementChart
@@ -310,8 +313,23 @@ def index():
         humidity = json_data['humidity']
         air_pressure = json_data['pressure']
         lux = json_data['light']
+        change_lcd = json_data['change_lcd'] # for LCD toggle
 
-        if lcd_mode == 'AQ':
+        if change_lcd == 'True':
+            
+            # toggle LCD mode
+            lcd_mode_num += 1
+            lcd_mode_num %= len(lcd_variables)
+
+            if lcd_mode_num == 0: # toggle to IP display
+                lcd_mode = lcd_variables[lcd_mode_num]
+                display_ip()
+            if lcd_mode_num == 1: # toggle to AQ display
+                lcd_mode = lcd_variables[lcd_mode_num]
+            if lcd_mode_num == 2: # toggle to TAIP display
+                lcd_mode = lcd_variables[lcd_mode_num]
+
+        if lcd_mode == lcd_variables[1]:
             display_text(variables[0], temperature , "°C")
 
         # Create a new DataModel instance
@@ -353,9 +371,6 @@ def index():
 @bp.route('/target_detection', methods=['GET', 'POST'])
 def target_detection():
     global lcd_mode # LCD GLOBAL
-
-    # if request.method == 'GET':
-    #     lcd_mode = 'TAIP'
 
     if request.method == 'POST':
         print("we got a post request :))")
@@ -596,7 +611,7 @@ def get_frame():
                 # cv2.imwrite(new_image, frame)
                 lastSavedTime = currentTime
 
-                if lcd_mode == 'TAIP':
+                if lcd_mode == lcd_variables[2]:
                     display_lcd(frame)
                 
                 # SEND POST REQUEST to 'target_detection' endpoint
@@ -763,8 +778,12 @@ def system_logs():
 @bp.route('/lcd_ip', methods=['GET'])
 def lcd_ip():
     global lcd_mode
-    lcd_mode = 'IP'
-    if lcd_mode == 'IP':
+    global lcd_mode_num
+    global lcd_variables
+
+    lcd_mode_num = 0
+    lcd_mode = lcd_variables[lcd_mode_num]
+    if lcd_mode == lcd_variables[0]:
         display_ip()
     return '', 204  # No content
 
@@ -772,14 +791,22 @@ def lcd_ip():
 @bp.route('/lcd_temp', methods=['GET'])
 def lcd_temp():
     global lcd_mode
-    lcd_mode = 'AQ'
+    global lcd_mode_num
+    global lcd_variables
+
+    lcd_mode_num = 1
+    lcd_mode = lcd_variables[lcd_mode_num]
     return '', 204  # No content
 
 
 @bp.route('/lcd_feed', methods=['GET'])
 def lcd_feed():
     global lcd_mode
-    lcd_mode = 'TAIP'
+    global lcd_mode_num
+    global lcd_variables
+
+    lcd_mode_num = 2
+    lcd_mode = lcd_variables[lcd_mode_num]
     return '', 204  # No content
 
 
