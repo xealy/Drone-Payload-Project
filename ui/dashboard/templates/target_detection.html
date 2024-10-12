@@ -16,7 +16,7 @@
     <div class="container border border-dark">
         <div class="row">
             <div class="col-3 bg-light text-center overflow-auto border-right border-dark" style="max-height: 600px;">
-                <p class="pt-2">Image Stream</p>
+                <p class="pt-2">Image Stream <i>(latest 100 images)</i></p>
                 {% for image in images %}
                     <div class="card">
                         <img class="card-img-top" src="data:image/jpeg;base64,{{ image.image_bytestring }}" alt="Card image cap">

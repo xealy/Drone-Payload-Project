@@ -3,7 +3,7 @@ from flask import Blueprint, send_from_directory, render_template, Response, req
 from .models import DataModel, ImageModel, MeasurementChart
 from . import db
 from sqlalchemy import inspect, desc, asc, and_
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import requests
 
 # Camera imports
@@ -22,7 +22,6 @@ import base64
 import math
 import cv2.aruco as aruco
 
-
 # LCD imports
 from PIL import Image
 from PIL import ImageDraw, ImageFont
@@ -30,7 +29,9 @@ import st7735
 import colorsys
 from fonts.ttf import RobotoMedium as UserFont
 
+
 bp = Blueprint('main', __name__)
+
 
 # GlOBAL FOR LCD
 lcd_mode = None
@@ -256,8 +257,8 @@ def index():
         print("we got a post request :))")
         json_data = request.get_json()
 
-        if json_data:
-            print(f"Received data: {json_data}")
+        # if json_data:
+        #     print(f"Received data: {json_data}")
 
         # Extract data from the request
         timestamp = datetime.strptime(json_data['timestamp'], '%d/%m/%Y %H:%M:%S')
@@ -294,14 +295,18 @@ def index():
             print("An error occurred")
 
     latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
-    data = db.session.query(DataModel)
+    
+    # Get records (last 3 minutes from most recent reading)
+    if latest_data is not None:
+        latest_timestamp = latest_data.timestamp
+        three_minutes_ago = latest_timestamp - timedelta(minutes=3)
+        data_last_three_minutes = db.session.query(DataModel).filter(DataModel.timestamp >= three_minutes_ago).all()
+        ChartJSON = make_chart(data_last_three_minutes)
+    else: 
+        data = db.session.query(DataModel)
+        ChartJSON = make_chart(data)
 
-    # if lcd_mode == 'AQ':
-    #     display_text(variables[0], latest_data.temperature, "°C")
-
-    ChartJSON = make_chart(data)
-
-    return render_template('air_sampling.html', latest_data=latest_data, data=data, chartJSON=ChartJSON)
+    return render_template('air_sampling.html', latest_data=latest_data, chartJSON=ChartJSON)
 
 
 @bp.route('/target_detection', methods=['GET', 'POST'])
@@ -347,14 +352,15 @@ def target_detection():
         # Redirect to the same route to trigger a GET request
         # return redirect(url_for('main.target_detection'))
 
-    images = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp))
+    # images = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp))
+    latest_images = db.session.query(ImageModel).order_by(desc(ImageModel.timestamp)).limit(100).all() # get latest 100 records ordered by timestamp in descending order
 
     # Display latest detections from each category
     latest_valve_status = db.session.query(ImageModel).filter(ImageModel.valve_status.isnot(None)).order_by(desc(ImageModel.timestamp)).first()
     latest_coordinates = db.session.query(ImageModel).filter(ImageModel.coordinates.isnot(None)).order_by(desc(ImageModel.timestamp)).first()
     latest_gauge_reading = db.session.query(ImageModel).filter(ImageModel.gauge_reading.isnot(None)).order_by(desc(ImageModel.timestamp)).first()
 
-    return render_template('target_detection.html', images=images, latest_valve_status=latest_valve_status, 
+    return render_template('target_detection.html', images=latest_images , latest_valve_status=latest_valve_status, 
                            latest_coordinates=latest_coordinates, latest_gauge_reading=latest_gauge_reading)
 
 
@@ -597,20 +603,54 @@ def video_feed():
 
 @bp.route('/data_logs', methods=['GET', 'POST'])
 def data_logs():
+    validation_message = None
+
+    # if no datetime range filter applied
+    data = db.session.query(DataModel).all()
+    images = db.session.query(ImageModel).all()
+
+    # convert results to dictionary with timestamp as the key
+    data_dict = {item.timestamp: item for item in data}
+    images_dict = {item.timestamp: item for item in images}
+
+    # create list to store merged results
+    merged_results = []
+
+    # merge data based on timestamp
+    for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
+        merged_entry = {
+            'timestamp': timestamp,
+            'data': data_dict.get(timestamp),
+            'image': images_dict.get(timestamp)
+        }
+        merged_results.append(merged_entry)
+
+    # sort merged results by timestamp in descending order
+    merged_results = sorted(merged_results, key=lambda x: x['timestamp'], reverse=True)
+
     if request.method == 'POST':
         print("we got a post request :))")
 
-        reference_date = date.today()
-        
-        # Get the time strings from the form
+        # get time strings from the form
         from_time_str = request.form.get('from_time')
         to_time_str = request.form.get('to_time')
+
+        if not from_time_str or not to_time_str:
+            validation_message = "Validation Error: Either 'From' field or 'To' field is empty"
+            return render_template('data_logs.html', data=merged_results, validation_message=validation_message)
         
-        # Convert time strings to time objects
+        # convert time strings to time objects
         from_time = datetime.strptime(from_time_str, '%I:%M %p').time()
         to_time = datetime.strptime(to_time_str, '%I:%M %p').time()
+
+        if from_time > to_time:
+            validation_message = "Validation Error: Ensure that 'From' field is earlier than 'To' field"
+            return render_template('data_logs.html', data=merged_results, validation_message=validation_message)
         
-        # Combine date and time into datetime objects
+        # get today's date
+        reference_date = date.today()
+
+        # combine date and time into datetime objects
         from_datetime = datetime.combine(reference_date, from_time)
         to_datetime = datetime.combine(reference_date, to_time)
 
@@ -633,35 +673,29 @@ def data_logs():
             }
             merged_results.append(merged_entry)
 
-        return render_template('data_logs.html', data=merged_results)
+        # sort merged results by timestamp in descending order
+        merged_results = sorted(merged_results, key=lambda x: x['timestamp'], reverse=True)
 
-    # Filter records based on the time frame
-    data = db.session.query(DataModel).all()
-    images = db.session.query(ImageModel).all()
+        return render_template('data_logs.html', data=merged_results, validation_message=validation_message)
 
-    # convert results to dictionary with timestamp as the key
-    data_dict = {item.timestamp: item for item in data}
-    images_dict = {item.timestamp: item for item in images}
-
-    # create list to store merged results
-    merged_results = []
-
-    # merge data based on timestamp
-    for timestamp in sorted(set(data_dict.keys()).union(images_dict.keys())):
-        merged_entry = {
-            'timestamp': timestamp,
-            'data': data_dict.get(timestamp),
-            'image': images_dict.get(timestamp)
-        }
-        merged_results.append(merged_entry)
-
-    return render_template('data_logs.html', data=merged_results)
+    return render_template('data_logs.html', data=merged_results, validation_message=validation_message)
 
 
 @bp.route('/system_logs', methods=['GET', 'POST'])
 def system_logs():
-    data = db.session.query(DataModel).all()
-    images = db.session.query(ImageModel).all()
+    data = None
+    images = None
+
+    # get records (last 10 minutes from most recent reading)
+    latest_data = db.session.query(DataModel).order_by(desc(DataModel.timestamp)).first()
+    if latest_data is not None:
+        latest_timestamp = latest_data.timestamp
+        ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
+        data = db.session.query(DataModel).filter(DataModel.timestamp >= ten_minutes_ago).all()
+        images = db.session.query(ImageModel).filter(ImageModel.timestamp >= ten_minutes_ago).all()
+    else: 
+        data = db.session.query(DataModel).all()
+        images = db.session.query(ImageModel).all()
 
     # convert results to dictionary with timestamp as the key
     data_dict = {item.timestamp: item for item in data}
@@ -678,6 +712,9 @@ def system_logs():
             'image': images_dict.get(timestamp)
         }
         merged_results.append(merged_entry)
+    
+    # sort merged results by timestamp in descending order
+    merged_results = sorted(merged_results, key=lambda x: x['timestamp'], reverse=True)
 
     return render_template('system_logs.html', data=merged_results)
 
@@ -685,10 +722,3 @@ def system_logs():
 @bp.route('/static/<path:path>')
 def send_js(path):
     return send_from_directory('static', path)
-
-
-# @bp.route('/static/<path:filename>')
-# def serve_static(filename):
-#     response = make_response(send_from_directory('static', filename))
-#     response.headers['Cache-Control'] = 'public, max-age=31536000'  # Cache for one year
-#     return response

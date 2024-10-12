@@ -16,6 +16,8 @@
 
                 <p class="font-italic pt-2">Selected Desired Time Range:</p>
 
+                {% if validation_message is not none %}<div class="alert alert-danger" role="alert">{{validation_message}}</div>{% endif %}
+
                 <!-- Time Picker HERE -->
                 <form action="/data_logs" method="POST">
                     <div class="form-row">
