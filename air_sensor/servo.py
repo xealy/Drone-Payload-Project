@@ -1,21 +1,16 @@
 from gpiozero import Servo
 from time import sleep
- 
-servo = Servo(4)
- 
-while True:
-    servo.mid()
-    print("mid")
-    sleep(0.5)
+
+
+servo = Servo(13)
+
+for x in range(6):
     servo.min()
-    print("min")
-    sleep(1)
+    sleep(1.0)
     servo.mid()
-    print("mid")
-    sleep(0.5)
+    sleep(2.0)
     servo.max()
-    print("max")
-    sleep(1)
-    break 
-servo.mid() 
-sleep(0.5)
+    sleep(1.0)
+    print("Testing servo loop" + str(x))
+print("Finished testing servo")
+    
