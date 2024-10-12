@@ -15,6 +15,6 @@ OR
 * python main.py
 
 ## AIR QUALITY
-To run the air quality sensing script, find and run the 'new-aq-reading.py' file in the Repo in a separate terminal. This will start taking air quality readings and send the data as POST requests to the Flask App (make sure Flask App is running too).
+To run the air quality sensing script, find and run the 'aq-reading.py' file in the Repo in a separate terminal. This will start taking air quality readings and send the data as POST requests to the Flask App (make sure Flask App is running too).
 
 
