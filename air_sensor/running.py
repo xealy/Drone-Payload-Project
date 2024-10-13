@@ -1,3 +1,4 @@
+# written by KIMBERLEY 
 from gpiozero import AngularServo
 import RPi.GPIO as GPIO
 import time
@@ -6,23 +7,23 @@ import pigpio
 
 GPIO.setmode(GPIO.BCM)
 # pin on board 
-mosfetpin = 24
+mosfetpin = 4
 
 GPIO.setup(mosfetpin, GPIO.OUT)
-pwm24 = GPIO.PWM(mosfetpin, 1)
+pwm24 = GPIO.PWM(mosfetpin, 50)
 
 
 pwm = pigpio.pi()
 pwm.set_mode(8, pigpio.OUTPUT)
 pwm.set_PWM_frequency(8, 50)
 
-GPIO.setup(14, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
+GPIO.setup(4, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
 
 
 def ServoDrill(total_time, direction):
     GPIO.setup(mosfetpin, GPIO.OUT)
     pwm24.start(100)
-    liftpin = 1 # dummy value
+    liftpin = 4 # gpio pin 
     drill = AngularServo(liftpin, min_pulse_width=0.001, max_pulse_width=0.002) # what is lift pin ?????
     if direction == 'stop':
         drill.angle = 0;
