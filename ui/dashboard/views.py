@@ -33,7 +33,6 @@ import socket
 # Soil Sampling imports
 from gpiozero import Servo
 from time import sleep
-# from servo import ServoClass
 
 
 bp = Blueprint('main', __name__)
@@ -268,13 +267,14 @@ lastSavedTime = time.monotonic() # ALEX ADDED THIS
 
 # Servo Drill Function
 def ServoDrill():
-    servo = Servo(13)
-    servo.max()
-    sleep(15.0)
-    servo.mid()
-    sleep(2.0)
-    servo.min()
-    sleep(12.0)
+    print("~ Servo motor running ~")
+    # servo = Servo(13)
+    # servo.max()
+    # sleep(15.0)
+    # servo.mid()
+    # sleep(2.0)
+    # servo.min()
+    # sleep(12.0)
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -455,12 +455,6 @@ def calculate_angle(base_point, tip_point):
         angle *= -1
         angle = angle + 270
 
-    if angle < 90:
-        print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
-        # servo_instance = ServoClass()
-        # servo_instance.start_servo() # run drill
-        ServoDrill()
-
     return angle
 
 
@@ -588,6 +582,11 @@ def get_frame():
 
                 # Map the angle to a pressure reading
                 pressure = map_angle_to_pressure(angle)
+
+                # Conditional to run motor
+                if pressure <= 29:
+                    print("The air pressure gauge is less than 2 Bars (~29 PSI)! Trigger the motor!")
+                    ServoDrill() # run the motor
 
                 # Display the pressure reading on the frame
                 cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
