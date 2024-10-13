@@ -30,6 +30,10 @@ import colorsys
 from fonts.ttf import RobotoMedium as UserFont
 import socket
 
+# Soil Sampling imports
+import servo
+from servo import ServoClass
+
 
 bp = Blueprint('main', __name__)
 
@@ -442,6 +446,8 @@ def calculate_angle(base_point, tip_point):
 
     if angle < 90:
         print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
+        servo_instance = ServoClass()
+        servo_instance.start_servo() # run drill
 
     return angle
 
