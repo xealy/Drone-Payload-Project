@@ -31,8 +31,9 @@ from fonts.ttf import RobotoMedium as UserFont
 import socket
 
 # Soil Sampling imports
-import servo
-from servo import ServoClass
+from gpiozero import Servo
+from time import sleep
+# from servo import ServoClass
 
 
 bp = Blueprint('main', __name__)
@@ -265,6 +266,16 @@ device = dai.Device(pipeline)
 lastSavedTime = time.monotonic() # ALEX ADDED THIS
 # END OF TAIP CONFIG
 
+# Servo Drill Function
+def ServoDrill():
+    servo = Servo(13)
+    servo.max()
+    sleep(15.0)
+    servo.mid()
+    sleep(2.0)
+    servo.min()
+    sleep(12.0)
+
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
@@ -446,8 +457,9 @@ def calculate_angle(base_point, tip_point):
 
     if angle < 90:
         print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
-        servo_instance = ServoClass()
-        servo_instance.start_servo() # run drill
+        # servo_instance = ServoClass()
+        # servo_instance.start_servo() # run drill
+        ServoDrill()
 
     return angle
 
