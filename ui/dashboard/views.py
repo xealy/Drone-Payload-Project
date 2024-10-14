@@ -30,6 +30,10 @@ import colorsys
 from fonts.ttf import RobotoMedium as UserFont
 import socket
 
+# Soil Sampling imports
+from gpiozero import Servo
+from time import sleep
+
 
 bp = Blueprint('main', __name__)
 
@@ -262,6 +266,18 @@ lastSavedTime = time.monotonic() # ALEX ADDED THIS
 # END OF TAIP CONFIG
 
 
+# Servo Drill Function
+def ServoDrill():
+    print("~ Servo motor running ~")
+    servo = Servo(13)
+    servo.max()
+    sleep(15.0)
+    servo.mid()
+    sleep(2.0)
+    servo.min()
+    sleep(12.0)
+
+
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     global lcd_mode # LCD GLOBAL
@@ -440,9 +456,6 @@ def calculate_angle(base_point, tip_point):
         angle *= -1
         angle = angle + 270
 
-    if angle < 90:
-        print("The air pressure gauge is less than 2 Bars! Trigger the motor!")
-
     return angle
 
 
@@ -613,6 +626,12 @@ def get_frame():
 
                 if lcd_mode == lcd_variables[2]:
                     display_lcd(frame)
+
+                # CONDITIONAL TO RUN MOTOR
+                if taip_detection_values[0] is not None:
+                    if taip_detection_values[0] <= 29:
+                        print("The air pressure gauge is less than 2 Bars (~29 PSI)! Trigger the motor!")
+                        ServoDrill() # run the motor
                 
                 # SEND POST REQUEST to 'target_detection' endpoint
                 if taip_detection_values[2] is not None:
