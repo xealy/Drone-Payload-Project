@@ -265,16 +265,17 @@ device = dai.Device(pipeline)
 lastSavedTime = time.monotonic() # ALEX ADDED THIS
 # END OF TAIP CONFIG
 
+
 # Servo Drill Function
 def ServoDrill():
     print("~ Servo motor running ~")
-    # servo = Servo(13)
-    # servo.max()
-    # sleep(15.0)
-    # servo.mid()
-    # sleep(2.0)
-    # servo.min()
-    # sleep(12.0)
+    servo = Servo(13)
+    servo.max()
+    sleep(15.0)
+    servo.mid()
+    sleep(2.0)
+    servo.min()
+    sleep(12.0)
 
 
 @bp.route('/', methods=['GET', 'POST'])
@@ -583,11 +584,6 @@ def get_frame():
                 # Map the angle to a pressure reading
                 pressure = map_angle_to_pressure(angle)
 
-                # Conditional to run motor
-                if pressure <= 29:
-                    print("The air pressure gauge is less than 2 Bars (~29 PSI)! Trigger the motor!")
-                    ServoDrill() # run the motor
-
                 # Display the pressure reading on the frame
                 cv2.putText(frame, f"Pressure: {pressure} PSI", (50, 100), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 0), 2)
         
@@ -630,6 +626,12 @@ def get_frame():
 
                 if lcd_mode == lcd_variables[2]:
                     display_lcd(frame)
+
+                # CONDITIONAL TO RUN MOTOR
+                if taip_detection_values[0] is not None:
+                    if taip_detection_values[0] <= 29:
+                        print("The air pressure gauge is less than 2 Bars (~29 PSI)! Trigger the motor!")
+                        ServoDrill() # run the motor
                 
                 # SEND POST REQUEST to 'target_detection' endpoint
                 if taip_detection_values[2] is not None:
