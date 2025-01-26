@@ -1,8 +1,5 @@
 # Drone-Payload-Project
 
-![university project](https://img.shields.io/badge/university%20project-1E90FF)
-![final year](https://img.shields.io/badge/final%20year-8A2BE2)
-
 ## About
 The Drone Payload Project involves developing a payload for the X500 UAV to perform real-time air quality monitoring, target detection, and soil sampling in a simulated industrial environment. Key functions include identifying and evaluating the open/closed status of ball valves, an air pressure gauge, and ArUCOs marker, while integrating a soil sampling mechanism triggered by specific air pressure conditions.
 
